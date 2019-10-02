@@ -5,7 +5,6 @@ DeepStack: Ensembling Keras Deep Learning Models into the next Performance Level
 [![Travis](https://travis-ci.com/jcborges/DeepStack.svg?branch=master)](https://travis-ci.com/jcborges/DeepStack)
 ---
 
-
 DeepStack is a Python module for building Deep Learning Ensembles built on top of Keras and distributed under the MIT license.
 
 DeepStack was started in 2109 by Julio Borges out of a Deep Learning Competition. 
