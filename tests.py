@@ -20,11 +20,8 @@ def test_dirichletensemble():
     """
     Tests if builsing an dirichlet ensemble is running without problems
     """
-    s=2
-    np.random.seed(seed=s)
-    tf.set_random_seed(seed=s)
-
-    X, y = make_blobs(n_samples=1100, centers=2, n_features=2, cluster_std=4, random_state=s)
+    np.random.seed(seed=2)
+    X, y = make_blobs(n_samples=1100, centers=2, n_features=2, cluster_std=4, random_state=2)
     n_train = 100
     trainX, testX = X[:n_train, :], X[n_train:, :]
     trainy, testy = y[:n_train], y[n_train:]

@@ -37,6 +37,7 @@ class Member:
             self.pred_batches.shuffle = False
         self.submission_probs = submission_probs
         self.name = name
+        self.val_probs = None
 
     def _calculate_val_predictions(self):  # TODO: call automatically for dirichlet ensemble
         if hasattr(self.val_batches, 'shuffle'):
@@ -45,8 +46,10 @@ class Member:
         preds = self.model.predict_generator(self.val_batches, steps=(self.val_batches.n // 32) + 1, verbose=1)
         if preds.shape[0] > 1:
             warnings.warn("Caution! This program is still not supporting multi-class problems.")
-            return preds[:,0]
-        return preds
+            self.val_probs = preds[:,0]
+        else:
+            self.val_probs = preds
+        return self.val_probs
 
 
 class Ensemble(object):
