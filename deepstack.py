@@ -14,9 +14,8 @@ from keras.models import load_model
 
 class Member:
     """
-    Representation of a single member of an Ensemble
+    Representation of a single keras model member of an Ensemble
     """
-
     def __init__(self, model, train_batches=None, val_batches=None, pred_batches=None, name=None,
                  submission_probs=None):
         """
@@ -213,36 +212,39 @@ class DirichletEnsemble(Ensemble):
         return    
 
 
-class StackEnsemble:
+class StackEnsemble(Ensemble):
     def __init__(self, model=None):
         """
-        Constructor of a Keras Ensemble Binary Classifier
+        Constructor of a Stacking Ensemble, with Keras Models as Base-Learners.
+        It supports by now only keras binary classifiers. It constructs a meta-learner that predicts
+        the probability of the positive class as a regression problem. 
         Args:
-            model: ensemble model which should serve as meta-model
+            model: ensemble model which should serve as meta-model. Sklearn RandomForestRegressor per default.
         """
         if model is None:
             self.model = RandomForestRegressor(verbose=1, n_estimators=100, max_depth=3)
+        else:
+            self.model = model
         # Initialize Parameters:
         self.members = []
         self._nmembers = 0
-        
-    def _get_train_X(self):
+        self.predictions = None
+    
+    def _get_X(self, attrname):
         X = []
-        for i in range(len(self.members[0].train_probs)):  # Assumption: all members have same train_probs length
+        probs = getattr(self.members[0], attrname)
+        for i in range(len(probs)):  # Assumption: all members have same train_probs length
             preds = []
             for member in self.members:
-                preds.append(member.train_probs[i])
+                preds.append(getattr(member, attrname)[i])
             X.append(preds)
         return np.array(X)
 
+    def _get_train_X(self):
+        return self._get_X("train_probs")
+
     def _get_val_X(self):
-        X = []
-        for i in range(len(self.members[0].val_probs)):  # Assumption: all members have same val_probs length
-            preds = []
-            for member in self.members:
-                preds.append(member.val_probs[i])
-            X.append(preds)
-        return np.array(X)
+        return self._get_X("val_probs")
 
     def _get_pred_X(self):     
         X = []
@@ -264,27 +266,29 @@ class StackEnsemble:
         if member.val_probs is None:
             try:
                 member.val_probs = member._calculate_val_predictions()
-            except:
-                pass
+            except Exception as e:
+                warnings.warn(e)
         if member.train_probs is None:
             try:
                 member.train_probs = member._calculate_train_predictions()
-            except:
-                pass
+            except Exception as e:
+                warnings.warn(e)
 
-    def fit(self, X, y, kwargs={}):
+    def fit(self, X=None, y=None, kwargs={}):
         """
         Trains the meta-model
         Args:
-            X: training data
-            y: training classes
+            X: training data for meta-learner
+            y: training classes for meta-learner
             kwargs: further arguments for the fit function
         """
         assert(len(self.members) > 1)
         # Assumption: all members have same train_batches.classes
+        if X is None or y is None:
+            return self._fit_train()
         return self.model.fit(X, y, **kwargs)  
 
-    def predict(self, X, kwargs={}):
+    def predict(self, X=None, kwargs={}):
         """
         Meta-Model prediction for the probabilities of the positive class as a regression problem
         Args:
@@ -293,7 +297,10 @@ class StackEnsemble:
         Returns:
             the predicted probabilities as np.array
         """
-        return self.model.predict(X, **kwargs)
+        if X is None:
+            self.predictions = self.model.predict(self._get_pred_X())
+        self.predictions = self.model.predict(X, **kwargs)
+        return self.predictions
 
     def _fit_train(self):
         return self.fit(self._get_train_X(), self.members[0].train_classes)
@@ -303,8 +310,10 @@ class StackEnsemble:
 
     def describe(self, probabilities_val=None, invert_probs=False):
         """
-        Prints information about the ensemble members and its weights as well as single and ensemble AUC performance
-        on validation dataset.
+        Prints information about the performance of base and meta learners based on validation data
+        Args:
+            probabilities_val: (optional) probabilities/prediction on validation data 
+            invert_probs: if true, switches the meaning of classes (prob = 1-prob)
         """
         modelbestauc = 0
         if probabilities_val is None:
@@ -318,6 +327,6 @@ class StackEnsemble:
             auc = metrics.roc_auc_score(member.val_classes, valprobs)
             if auc > modelbestauc:
                 modelbestauc = auc
-            print(member.name, auc)
+            print(member.name,"AUC:", auc)
         auc = metrics.roc_auc_score(val_classes, probabilities_val)
-        print("Ensemble", auc)
+        print("Ensemble AUC:", auc)

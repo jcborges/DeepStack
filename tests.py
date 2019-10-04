@@ -81,7 +81,7 @@ def test_stackensemble():
     df = pd.read_csv("sonar.csv", header=None)
     classes = df[60].map({"M":0, "R":1})
     del df[60]
-    X_train, X_test, y_train, y_test = train_test_split(df, classes, test_size=1/3, random_state=1)
+    X_train, X_test, y_train, y_test = train_test_split(df, classes, test_size=2/3, random_state=1)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.5, random_state=1)
 
     model1 = Sequential()
@@ -121,5 +121,5 @@ def test_stackensemble():
     stack = StackEnsemble()
     stack.add_member(member1)
     stack.add_member(member2)
-    stack._fit_train()
+    stack.fit()
     stack.describe(invert_probs=True)    
