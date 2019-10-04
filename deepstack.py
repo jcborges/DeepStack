@@ -7,13 +7,18 @@ from keras.layers.merge import concatenate
 from keras import backend as K
 import tensorflow as tf
 from abc import abstractmethod
+from sklearn.ensemble import RandomForestRegressor
+import os
+from keras.models import load_model
 
 
 class Member:
     """
     Representation of a single member of an Ensemble
     """
-    def __init__(self, model, train_batches=None, val_batches=None, pred_batches=None, name=None, submission_probs=None):
+
+    def __init__(self, model, train_batches=None, val_batches=None, pred_batches=None, name=None,
+                 submission_probs=None):
         """
         Constructor of a Keras Ensemble Member for a Binary Classification (Image Recognition) Task.
         If `val_predictions` is None, then `val_predictions` will be calculated using `imggen`.
@@ -25,31 +30,66 @@ class Member:
             submission_probs: the submission prediction probabilities, to be weighted in case of DirichletEnsemble building
             name: name of the model
         """
-        self.model = model
-        self.train_batches = train_batches
-        self.val_batches = val_batches
-        self.pred_batches = pred_batches
-        if train_batches is not None and hasattr(train_batches, 'shuffle'):
-            self.train_batches.shuffle = False
-        if val_batches is not None and hasattr(val_batches, 'shuffle'):
-            self.val_batches.shuffle = False
-        if pred_batches is not None and hasattr(pred_batches, 'shuffle'):
-            self.pred_batches.shuffle = False
-        self.submission_probs = submission_probs
-        self.name = name
-        self.val_probs = None
+        self.model=model
+        self.train_batches=train_batches
+        self.val_batches=val_batches
+        self.pred_batches=pred_batches
+        self.submission_probs=submission_probs
+        self.name=name
+        #Initialize Params
+        self.val_probs=None
+        self.train_probs=None
+        self.val_classes = None
+        self.train_classes = None
 
-    def _calculate_val_predictions(self):  # TODO: call automatically for dirichlet ensemble
-        if hasattr(self.val_batches, 'shuffle'):
-            self.val_batches.reset()
-            self.val_batches.shuffle = False
-        preds = self.model.predict_generator(self.val_batches, steps=(self.val_batches.n // 32) + 1, verbose=1)
+    def _calculate_predictions(self, batches):  # TODO: call automatically for dirichlet ensemble
+        if hasattr(batches, 'shuffle'):
+            batches.reset()
+            batches.shuffle=False
+        preds=self.model.predict_generator(batches, steps=(batches.n // 32) + 1, verbose=1)
         if preds.shape[0] > 1:
             warnings.warn("Caution! This program is still not supporting multi-class problems.")
-            self.val_probs = preds[:,0]
+            probs=preds[:, 0]
         else:
-            self.val_probs = preds
+            probs=preds
+        return probs
+
+    def _calculate_val_predictions(self):  # TODO: call automatically for dirichlet ensemble
+        self.val_probs=self._calculate_predictions(self.val_batches)
+        self.val_classes=self.val_batches.classes
         return self.val_probs
+
+    def _calculate_train_predictions(self):  # TODO: call automatically for dirichlet ensemble
+        self.train_probs=self._calculate_predictions(self.train_batches)
+        self.train_classes=self.train_batches.classes
+        return self.train_probs
+
+    def save(self, folder="./premodels/"):
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+        if not os.path.exists(folder+self.name):
+            os.mkdir(folder+self.name)
+        if self.val_probs is None:
+            try:
+                self.val_probs=self._calculate_val_predictions()
+            except Exception as e:
+                print(e)
+        if self.train_probs is None:
+            try:
+                self.train_probs=self._calculate_train_predictions()
+            except Exception as e:
+                print(e)
+        np.save(folder + self.name+"/val_probs.npy", self.val_probs)
+        np.save(folder + self.name + "/train_probs.npy", self.train_probs)
+        np.save(folder + self.name + "/val_classes.npy", self.val_batches.classes)
+        np.save(folder + self.name + "/train_classes.npy", self.train_batches.classes)
+
+    def load(self, folder="./premodel/", keras_model_path=None, keras_kwargs={}):
+        self.val_probs = np.load(folder + self.name + "/val_probs.npy")
+        self.train_probs = np.load(folder + self.name + "/train_probs.npy")
+        self.val_classes = np.load(folder + self.name + "/val_classes.npy")
+        self.train_classes = np.load(folder + self.name + "/train_classes.npy")
+        self.model = load_model(keras_model_path, **keras_kwargs)
 
 
 class Ensemble(object):
@@ -171,3 +211,102 @@ class DirichletEnsemble(Ensemble):
                      "alone achieves an AUC of {}".format(self.bestauc, modelbestauc)
         print(result)
         return    
+
+
+class StackingEnsemble:
+    def __init__(self, model):
+        """
+        Constructor of a Keras Ensemble Binary Classifier
+        Args:
+            model: ensemble model which should serve as meta-model
+        """
+        if model is None:
+            self.model = RandomForestRegressor(verbose=1, n_estimators=1000, max_depth=5)
+        # Initialize Parameters:
+        self.members = []
+        self._nmembers = 0
+        
+    def _get_train_X(self):
+        X = []
+        for i in range(len(self.members[0].train_probs)):  # Assumption: all members have same train_probs length
+            preds = []
+            for member in self.members:
+                preds.append(member.train_probs[i])
+            X.append(preds)
+        return np.array(X)
+
+    def _get_val_X(self):
+        X = []
+        for i in range(len(self.members[0].val_probs)):  # Assumption: all members have same val_probs length
+            preds = []
+            for member in self.members:
+                preds.append(member.val_probs[i])
+            X.append(preds)
+        return np.array(X)
+
+    def _get_pred_X(self):     
+        X = []
+        for i in range(len(self.members[0].submission_probs)):
+            preds = []
+            for member in self.members:
+                preds.append(member.submission_probs.iloc[i])
+            X.append(preds)
+        return np.array(X)   
+
+    def add_member(self, member):
+        """
+        Adds a ensemble Member to the Stack
+        Args:
+            member: an instance of class `Member`
+        """
+        self.members.append(member)
+        self._nmembers += 1
+        if member.val_probs is None:
+            try:
+                member.val_probs = member._calculate_val_predictions()
+            except:
+                pass
+        if member.train_probs is None:
+            try:
+                member.train_probs = member._calculate_train_predictions()
+            except:
+                pass
+
+    def fit(self, X, y, kwargs={}):
+        """
+        Trains the meta-model
+        Args:
+            X: training data
+            y: training classes
+            kwargs: further arguments for the fit function
+        """
+        assert(len(self.members) > 1)
+        # Assumption: all members have same train_batches.classes
+        return self.model.fit(X, y, **kwargs)  
+
+    def predict(self, X, kwargs={}):
+        """
+        Meta-Model prediction for the probabilities of the positive class as a regression problem
+        Args:
+            X: input data to be predicted
+            kwargs: further arguments for prediction function
+        Returns:
+            the predicted probabilities as np.array
+        """
+        return self.model.predict(X, **kwargs)
+
+    def describe(self, probabilities_val, positive_class=0):
+        """
+        Prints information about the ensemble members and its weights as well as single and ensemble AUC performance
+        on validation dataset.
+        """
+        modelbestauc = 0
+        val_classes = self.members[0].val_classes  # Assumption: all members have same val_classes
+        for i in range(self._nmembers):
+            model = self.members[i]
+            auc = metrics.roc_auc_score([x == positive_class for x in val_classes], model.val_probs)
+            if auc > modelbestauc:
+                modelbestauc = auc
+            print(self.members[i].name, auc)
+        auc = metrics.roc_auc_score([x == positive_class for x in val_classes], probabilities_val)
+        print("Ensemble", auc)

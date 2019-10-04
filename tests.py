@@ -8,7 +8,7 @@ import random
 import tensorflow as tf
 import numpy as np
 
-def fit_model(trainX, trainy):
+def _fit_dirichlet_model(trainX, trainy):
         model = Sequential()
         model.add(Dense(random.randint(20,30), input_dim=2, activation='relu'))
         model.add(Dense(1, activation='sigmoid'))
@@ -28,7 +28,7 @@ def test_dirichletensemble():
     n_members = 5
     stack = DirichletEnsemble(testy, N=7000, positive_class=1)
     for i in range(n_members):
-        model = fit_model(trainX, trainy)
+        model = _fit_dirichlet_model(trainX, trainy)
         probs = model.predict(testX, verbose=0)
         m = Member(model, name="Model " + str(i))
         m.val_probs = probs
