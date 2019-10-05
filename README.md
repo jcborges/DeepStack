@@ -9,6 +9,7 @@ DeepStack is a Python module for building Deep Learning Ensembles built on top o
 
 DeepStack was started in 2019 by Julio Borges out of a Deep Learning Competition. 
 It is still under development and currently supports binary classifiers.
+DeepStack is currently looking for a team of volunteers and welcomes new contributors of all experience levels. 
 
 
 ## Installation
