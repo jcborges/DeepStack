@@ -16,19 +16,20 @@ class Member:
     """
     Representation of a single keras model member of an Ensemble
     """
-    def __init__(self, model, train_batches=None, val_batches=None, pred_batches=None, name=None,
+    def __init__(self, model=None, name=None, train_batches=None, val_batches=None, pred_batches=None,
                  submission_probs=None):
         """
         Constructor of a Keras Ensemble Member for a Binary Classification (Image Recognition) Task.
         If `val_predictions` is None, then `val_predictions` will be calculated using `imggen`.
         Args:
             model: the (pre-trained) keras model
+            name: name of the model. Must be unique.
             train_batches: an instance of Keras `ImageDataGenerator` for training the Stacked Model
             val_batches: an instance of Keras `ImageDataGenerator` for validating the Stacked Model
             pred_batches: an instance of Keras `ImageDataGenerator` for prediction
             submission_probs: the submission prediction probabilities, to be weighted in case of DirichletEnsemble building
-            name: name of the model
         """
+        assert(name is not None)
         self.model=model
         self.train_batches=train_batches
         self.val_batches=val_batches
@@ -82,13 +83,19 @@ class Member:
         np.save(folder + self.name + "/train_probs.npy", self.train_probs)
         np.save(folder + self.name + "/val_classes.npy", self.val_batches.classes)
         np.save(folder + self.name + "/train_classes.npy", self.train_batches.classes)
+        if self.submission_probs is not None:
+            np.save(folder + self.name + "/submission_probs.npy", self.submission_probs)
 
-    def load(self, folder="./premodel/", keras_model_path=None, keras_kwargs={}):
-        self.val_probs = np.load(folder + self.name + "/val_probs.npy")
+    def load(self, folder="./premodels/", keras_model_path=None, keras_kwargs={}):
         self.train_probs = np.load(folder + self.name + "/train_probs.npy")
-        self.val_classes = np.load(folder + self.name + "/val_classes.npy")
         self.train_classes = np.load(folder + self.name + "/train_classes.npy")
+        self.val_probs = np.load(folder + self.name + "/val_probs.npy")
+        self.val_classes = np.load(folder + self.name + "/val_classes.npy")
+        if os.path.isfile(folder + self.name + "/submission_probs.npy"):
+            self.submission_probs = np.load(folder + self.name + "/submission_probs.npy")
         self.model = load_model(keras_model_path, **keras_kwargs)
+        print("Loaded", self.name)
+        return self
 
 
 class Ensemble(object):
@@ -228,32 +235,7 @@ class StackEnsemble(Ensemble):
         # Initialize Parameters:
         self.members = []
         self._nmembers = 0
-        self.predictions = None
-    
-    def _get_X(self, attrname):
-        X = []
-        probs = getattr(self.members[0], attrname)
-        for i in range(len(probs)):  # Assumption: all members have same train_probs length
-            preds = []
-            for member in self.members:
-                preds.append(getattr(member, attrname)[i])
-            X.append(preds)
-        return np.array(X)
-
-    def _get_train_X(self):
-        return self._get_X("train_probs")
-
-    def _get_val_X(self):
-        return self._get_X("val_probs")
-
-    def _get_pred_X(self):     
-        X = []
-        for i in range(len(self.members[0].submission_probs)):
-            preds = []
-            for member in self.members:
-                preds.append(member.submission_probs.iloc[i])
-            X.append(preds)
-        return np.array(X)   
+        self.predictions = None 
 
     def add_member(self, member):
         """
@@ -298,17 +280,17 @@ class StackEnsemble(Ensemble):
             the predicted probabilities as np.array
         """
         if X is None:
-            self.predictions = self.model.predict(self._get_pred_X())
-        self.predictions = self.model.predict(X, **kwargs)
+            X = self._get_pred_X()
+
+        try:
+            self.predictions = self.model.predict_proba(X, **kwargs)[:,0]
+            print("Using predict_proba")
+        except Exception as e:
+            print(e)
+            self.predictions = self.model.predict(X, **kwargs)
         return self.predictions
 
-    def _fit_train(self):
-        return self.fit(self._get_train_X(), self.members[0].train_classes)
-
-    def _predict_val(self):
-        return self.predict(self._get_val_X())
-
-    def describe(self, probabilities_val=None, invert_probs=False):
+    def describe(self, probabilities_val=None):
         """
         Prints information about the performance of base and meta learners based on validation data
         Args:
@@ -322,11 +304,70 @@ class StackEnsemble(Ensemble):
         for i in range(self._nmembers):
             member = self.members[i]
             valprobs = member.val_probs
-            if invert_probs:
+            auc = metrics.roc_auc_score(member.val_classes, valprobs)
+            if auc < 0.5:
                 valprobs = [1-x for x in valprobs]
             auc = metrics.roc_auc_score(member.val_classes, valprobs)
             if auc > modelbestauc:
                 modelbestauc = auc
             print(member.name,"AUC:", auc)
         auc = metrics.roc_auc_score(val_classes, probabilities_val)
-        print("Ensemble AUC:", auc)
+        if auc < 0.5:
+            probabilities_val = [1-x for x in probabilities_val]
+        auc = metrics.roc_auc_score(val_classes, probabilities_val)
+        print("Ensemble AUC:", auc)        
+
+    def _get_X(self, attrname):
+        X = []
+        probs = getattr(self.members[0], attrname)
+        for i in range(len(probs)):  # Assumption: all members have same train_probs length
+            preds = []
+            for member in self.members:
+                preds.append(getattr(member, attrname)[i])
+            X.append(preds)
+        return np.array(X)
+
+    def _get_train_X(self):
+        return self._get_X("train_probs")
+
+    def _get_val_X(self):
+        return self._get_X("val_probs")
+
+    def _get_pred_X(self):   
+        return self._get_X("submission_probs") 
+
+    def _fit_train(self):
+        return self.fit(self._get_train_X(), self.members[0].train_classes)
+
+    def _fit_submission(self):
+        """
+        Fits model on training and validation data. 
+        Useful when training the meta-learner for final submission prediction
+        """
+        X1 = self._get_train_X()
+        X2 = self._get_val_X()
+        y1 = self.members[0].train_classes
+        y2 = self.members[0].val_classes
+        X = np.concatenate((X1,X2))
+        y = np.concatenate((y1,y2))
+        return self.fit(X, y)
+
+    def _predict_val(self):
+        return self.predict(self._get_val_X())
+    
+    def _test_arrays(self, a1, a2):
+        assert(a1.shape == a2.shape)
+        return np.sum(a1==a2) == len(a1)  # All elements of array are equal
+
+    def _test(self):
+        """
+        Test assumption that all members' classes have same shape and values.
+        This is an internal condition for the meta-learner to learn patterns of its base-learners.
+        """
+        t1=[(self._test_arrays(self.members[i].train_classes, self.members[i+1].train_classes)) for i in range(self._nmembers-1)]
+        t2=[(self._test_arrays(self.members[i].val_classes, self.members[i+1].val_classes)) for i in range(self._nmembers-1)]
+        assert(np.sum(t1) == self._nmembers-1)
+        assert(np.sum(t2) == self._nmembers-1)
+        names = [self.members[i].name for i in range(self._nmembers)]
+        assert(len(list(names)) == len(set(names)))
+        return True

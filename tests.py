@@ -121,5 +121,6 @@ def test_stackensemble():
     stack = StackEnsemble()
     stack.add_member(member1)
     stack.add_member(member2)
+    stack._test()
     stack.fit()
-    stack.describe(invert_probs=True)    
+    stack.describe()    

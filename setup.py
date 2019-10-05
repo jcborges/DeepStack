@@ -11,7 +11,7 @@ def setup_package():
                     description='DeepStack: Ensembling Keras Deep Learning Models into the next Performance Level',
                     license='MIT',
                     url='https://github.com/jcborges/DeepStack',
-                    version='0.0.2',
+                    version='0.0.3',
                     install_requires=[
                         'numpy>=1.16.4',
                         'keras>=2.2.5',
