@@ -17,7 +17,7 @@ pip install git+https://github.com/jcborges/DeepStack
 ```
 
 ## Stacking
-Stacking is based on training a (Sklearn) Meta-Learner on top of Keras pre-trained Base-Learner.
+Stacking is based on training a (Sklearn) Meta-Learner on top of Keras pre-trained Base-Learners.
 DeepStack offer an interface to fit the Meta-Learner on the predictions of the Base-Learners.
 
 A running example can be found on `tests.py`
@@ -49,10 +49,7 @@ prediction = stack.predict()
 ```
 
 ## Randomized Weighted Ensemble
-Ensemble Technique that weights the prediction of each ensemble member, combining the weights to calculate a combined prediction.  
-Weight optimization search is performed with randomized search based on the dirichlet distribution on a validation dataset. 
-
-Minimum Working Example:
+Ensemble Technique that weights the prediction of each ensemble member, combining the weights to calculate a combined prediction.  Weight optimization search is performed with randomized search based on the dirichlet distribution on a validation dataset. 
 
 ```python
 from deepstack import Member
