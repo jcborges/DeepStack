@@ -10,6 +10,8 @@ from abc import abstractmethod
 from sklearn.ensemble import RandomForestRegressor
 import os
 from keras.models import load_model
+import joblib
+import glob
 
 
 class Member:
@@ -41,6 +43,8 @@ class Member:
         self.train_probs=None
         self.val_classes = None
         self.train_classes = None
+        self._keras_modelpath = None
+        self._keras_kwargs = None
 
     def _calculate_predictions(self, batches):  # TODO: call automatically for dirichlet ensemble
         if hasattr(batches, 'shuffle'):
@@ -64,7 +68,25 @@ class Member:
         self.train_classes=self.train_batches.classes
         return self.train_probs
 
-    def save(self, folder="./premodels/"):
+    def load_kerasmodel(self, keras_modelpath=None, keras_kwargs={}):
+        self.model = load_model(keras_modelpath, **keras_kwargs)
+        self._keras_modelpath = keras_modelpath
+        self._keras_kwargs = keras_kwargs
+        print("Keras Model Loaded:", keras_modelpath)
+    
+    def _load_keras(self):
+        return self.load_kerasmodel(self._keras_modelpath, self._keras_kwargs)
+
+    def save(self, folder="./premodels/", save_kerasmodel = False):  # TODO: Document
+        """
+        Saves member to folder
+        Args:
+            folder: the folder where models should be saved to. Create if not exists.
+            save_kerasmodel: if it should save the keras model as part of object. 
+                Recommendation is to load keras separately with method `load_kerasmodel`
+        """
+        if folder[-1] !=  os.sep:
+            folder +=  os.sep
         if not os.path.exists(folder):
             os.mkdir(folder)
         if not os.path.exists(folder+self.name):
@@ -79,23 +101,30 @@ class Member:
                 self.train_probs=self._calculate_train_predictions()
             except Exception as e:
                 print(e)
-        np.save(folder + self.name+"/val_probs.npy", self.val_probs)
-        np.save(folder + self.name + "/train_probs.npy", self.train_probs)
-        np.save(folder + self.name + "/val_classes.npy", self.val_batches.classes)
-        np.save(folder + self.name + "/train_classes.npy", self.train_batches.classes)
-        if self.submission_probs is not None:
-            np.save(folder + self.name + "/submission_probs.npy", self.submission_probs)
+        if  save_kerasmodel:
+            joblib.dump(self, os.path.join(folder+self.name, "member.joblib"))
+        else:
+            temp = self.model
+            self.model = None  # Remove Keras model from variable
+            joblib.dump(self, os.path.join(folder+self.name, "member.joblib"))
+            self.model = temp
 
-    def load(self, folder="./premodels/", keras_model_path=None, keras_kwargs={}):
-        self.train_probs = np.load(folder + self.name + "/train_probs.npy")
-        self.train_classes = np.load(folder + self.name + "/train_classes.npy")
-        self.val_probs = np.load(folder + self.name + "/val_probs.npy")
-        self.val_classes = np.load(folder + self.name + "/val_classes.npy")
-        if os.path.isfile(folder + self.name + "/submission_probs.npy"):
-            self.submission_probs = np.load(folder + self.name + "/submission_probs.npy")
-        self.model = load_model(keras_model_path, **keras_kwargs)
-        print("Loaded", self.name)
-        return self
+    @classmethod
+    def load(cls, folder=None):
+        """Loads base-learner from directory
+        Args:
+            folder: directory where member is saved
+        Returns:
+            loaded Member object
+        """
+        path = os.path.join(folder, "member.joblib")
+        member = joblib.load(path)
+        if member.model is None:
+            try:
+                member._load_keras()
+            except Exception as e:
+                warnings.warn(str(e))
+        return member
 
 
 class Ensemble(object):
@@ -249,12 +278,12 @@ class StackEnsemble(Ensemble):
             try:
                 member.val_probs = member._calculate_val_predictions()
             except Exception as e:
-                warnings.warn(e)
+                warnings.warn(str(e))
         if member.train_probs is None:
             try:
                 member.train_probs = member._calculate_train_predictions()
             except Exception as e:
-                warnings.warn(e)
+                warnings.warn(str(e))
 
     def fit(self, X=None, y=None, kwargs={}):
         """
@@ -284,7 +313,6 @@ class StackEnsemble(Ensemble):
 
         try:
             self.predictions = self.model.predict_proba(X, **kwargs)[:,0]
-            print("Using predict_proba")
         except Exception as e:
             print(e)
             self.predictions = self.model.predict(X, **kwargs)
@@ -295,7 +323,6 @@ class StackEnsemble(Ensemble):
         Prints information about the performance of base and meta learners based on validation data
         Args:
             probabilities_val: (optional) probabilities/prediction on validation data 
-            invert_probs: if true, switches the meaning of classes (prob = 1-prob)
         """
         modelbestauc = 0
         if probabilities_val is None:
@@ -361,8 +388,8 @@ class StackEnsemble(Ensemble):
 
     def _test(self):
         """
-        Test assumption that all members' classes have same shape and values.
-        This is an internal condition for the meta-learner to learn patterns of its base-learners.
+        Test assumption that all members' classes have same shape and values. Names should be unique.
+        This is an internal condition for class structures.
         """
         t1=[(self._test_arrays(self.members[i].train_classes, self.members[i+1].train_classes)) for i in range(self._nmembers-1)]
         t2=[(self._test_arrays(self.members[i].val_classes, self.members[i+1].val_classes)) for i in range(self._nmembers-1)]
@@ -371,3 +398,36 @@ class StackEnsemble(Ensemble):
         names = [self.members[i].name for i in range(self._nmembers)]
         assert(len(list(names)) == len(set(names)))
         return True
+    
+    def save(self, folder="./premodels/", save_kerasmodel = False):  # TODO: Document
+        """
+        Saves meta-learner and base-learner of ensemble into folder / directory
+        Args:
+            folder: the folder where models should be saved to. Create if not exists.
+            save_kerasmodel: if members / base-learners should save the keras model as part of object. 
+        """
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+        [member.save(folder=folder, save_kerasmodel=save_kerasmodel) for member in self.members]
+        temp = self.members
+        self.members = []  # Reset base-learners. These are loaded idependently
+        self._nmembers = 0
+        joblib.dump(self, os.path.join(folder, "stackensemble.joblib"))
+        self.members = temp
+    
+    @classmethod
+    def load(cls, folder="./premodels/"): 
+        """
+        Lods models from folder / directory
+        Args:
+            folder: directory where models should be loaded from
+        Returns:
+            loaded StackEnsemble
+        """
+        stack = joblib.load(os.path.join(folder, "stackensemble.joblib"))
+        if folder[-1] !=  os.sep:
+            folder +=  os.sep
+        for fn in glob.glob(folder+"**/"):
+            member = Member.load(fn)
+            stack.add_member(member)
+        return stack

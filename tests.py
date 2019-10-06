@@ -47,7 +47,6 @@ class CustomIterator:
     def __init__(self, X_data, y_data, batch_size):
         self.X_data, self.y_data, self.batch_size = X_data, y_data, batch_size
         self.n = len(X_data)
-
         samples_per_epoch = self.X_data.shape[0]
         self.number_of_batches = samples_per_epoch/self.batch_size
         self.counter = 0
@@ -118,9 +117,34 @@ def test_stackensemble():
     )
     member2=Member(model2, train_batches=val_batches2, val_batches=test_batches2, name="Model2")
 
+    if not os.path.exists("./premodels/"):
+            os.mkdir("./premodels/")
+
+    model1.save("./premodels/model1.h5")
+    model2.save("./premodels/model2.h5")
+
     stack = StackEnsemble()
     stack.add_member(member1)
     stack.add_member(member2)
     stack._test()
     stack.fit()
-    stack.describe()    
+    stack.describe()
+    stack.save()   
+    stack2=StackEnsemble.load()
+    stack2.describe()
+    stack2._test()
+
+    member1.load_kerasmodel("./premodels/model1.h5")
+    member2.load_kerasmodel("./premodels/model2.h5")
+    print(member1._keras_modelpath)
+    stack3 = StackEnsemble()
+    stack3.add_member(member1)
+    stack3.add_member(member2)
+    stack3.fit()
+    stack3.describe()
+    stack3._test()
+    stack3.save()
+
+    stack4=StackEnsemble.load()
+    stack4.describe()
+    stack4._test()
