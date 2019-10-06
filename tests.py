@@ -22,7 +22,7 @@ def _fit_dirichlet_model(trainX, trainy):
         model.fit(trainX, trainy, epochs=50, verbose=0)
         return model
 
-def test_dirichletensemble():
+def dirichletensemble():
     """
     Tests if builsing an dirichlet ensemble is running without problems
     """
