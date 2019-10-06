@@ -22,7 +22,7 @@ def _fit_dirichlet_model(trainX, trainy):
         model.fit(trainX, trainy, epochs=50, verbose=0)
         return model
 
-def dirichletensemble():
+def test_dirichletensemble():
     """
     Tests if builsing an dirichlet ensemble is running without problems
     """
@@ -128,11 +128,14 @@ def test_stackensemble():
     stack.add_member(member2)
     stack._test()
     stack.fit()
-    stack.describe()
+    auc1 = stack.describe()
     stack.save()   
     stack2=StackEnsemble.load()
-    stack2.describe()
+    auc2 = stack2.describe()
     stack2._test()
+
+    print(auc1, auc2)
+    assert(auc1 == auc2)
 
     member1.load_kerasmodel("./premodels/model1.h5")
     member2.load_kerasmodel("./premodels/model2.h5")
@@ -141,10 +144,13 @@ def test_stackensemble():
     stack3.add_member(member1)
     stack3.add_member(member2)
     stack3.fit()
-    stack3.describe()
+    auc3 = stack3.describe()
     stack3._test()
     stack3.save()
 
     stack4=StackEnsemble.load()
-    stack4.describe()
+    auc4 = stack4.describe()
     stack4._test()
+
+    print(auc3, auc4)
+    assert(auc4 == auc4)

@@ -342,7 +342,8 @@ class StackEnsemble(Ensemble):
         if auc < 0.5:
             probabilities_val = [1-x for x in probabilities_val]
         auc = metrics.roc_auc_score(val_classes, probabilities_val)
-        print("Ensemble AUC:", auc)        
+        print("Ensemble AUC:", auc)    
+        return auc    
 
     def _get_X(self, attrname):
         X = []
