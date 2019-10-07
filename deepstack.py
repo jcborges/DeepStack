@@ -228,8 +228,6 @@ class DirichletEnsemble(Ensemble):
         """
         self.members.append(member)
         self._nmembers += 1
-        if member.val_batches is not None and member.val_probs is None:
-            member.val_probs = member._calculate_val_predictions()
 
     def fit(self, verbose=False):
         """

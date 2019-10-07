@@ -37,7 +37,7 @@ def test_dirichletensemble():
     for i in range(n_members):
         model = _fit_dirichlet_model(trainX, trainy)
         probs = model.predict(testX, verbose=0)
-        m = Member(model, name="Model " + str(i))
+        m = Member(keras_model=model, name="Model " + str(i))
         m.val_probs = probs
         stack.add_member(m)
     stack.fit()
@@ -99,7 +99,7 @@ def test_stackensemble():
     validation_steps=val_batches1.n//32,
     epochs=30
     )
-    member1=Member(model1, train_batches=val_batches1, val_batches=test_batches1, name="Model1")
+    member1=Member(keras_model=model1, train_batches=val_batches1, val_batches=test_batches1, name="Model1")
 
     model2 = Sequential()
     model2.add(Dense(15, input_dim=60, activation='relu'))
@@ -116,7 +116,7 @@ def test_stackensemble():
     validation_steps=val_batches2.n//32,
     epochs=30
     )
-    member2=Member(model2, train_batches=val_batches2, val_batches=test_batches2, name="Model2")
+    member2=Member(keras_model=model2, train_batches=val_batches2, val_batches=test_batches2, name="Model2")
 
     if not os.path.exists("./premodels/"):
             os.mkdir("./premodels/")
