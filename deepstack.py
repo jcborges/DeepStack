@@ -1,11 +1,6 @@
 import numpy as np
 from sklearn import metrics
 import warnings
-from keras.models import Model
-from keras.layers import Dense
-from keras.layers.merge import concatenate
-from keras import backend as K
-import tensorflow as tf
 from abc import abstractmethod
 from sklearn.ensemble import RandomForestRegressor
 import os
@@ -16,7 +11,7 @@ import glob
 
 class Member:
     """
-    Representation of a single keras model member (Base-Learner) of an Ensemble 
+    Representation of a single keras model member (Base-Learner) of an Ensemble
     """
     def __init__(self, name=None, keras_model=None, train_batches=None, val_batches=None,
                  submission_probs=None, keras_modelpath=None, keras_kwargs=None):
@@ -34,28 +29,28 @@ class Member:
             keras_kwargs: kwargs for keras `load_model` (if `model` argument is None)
         """
         assert(name is not None)
-        self.name=name
-        self.model=keras_model
-        self.submission_probs=submission_probs
+        self.name = name
+        self.model = keras_model
+        self.submission_probs = submission_probs
         self._keras_modelpath = keras_modelpath
         self._keras_kwargs = keras_kwargs
         #Initialize Params
-        self.val_probs=None
-        self.train_probs=None
+        self.val_probs = None
+        self.train_probs = None
         self.val_classes = None
         self.train_classes = None
         if (keras_model is None) and (keras_modelpath is not None):
             self._load_keras()
         if val_batches is not None:
             self._calculate_val_predictions(val_batches)
-        if train_batches is not None:            
+        if train_batches is not None:
             self._calculate_train_predictions(train_batches)
 
-    def __repr__(self):        
-         return "<Member: "+self.name+">"
+    def __repr__(self):
+        return "<Member: " + self.name + ">"
 
-    def __str__(self):        
-         return "Member: "+self.name
+    def __str__(self):
+        return "Member: " + self.name
 
     def __eq__(self, other):
         c1 = self.name == other.name
@@ -108,22 +103,22 @@ class Member:
     def _calculate_predictions(self, batches):  # TODO: call automatically for dirichlet ensemble
         if hasattr(batches, 'shuffle'):
             batches.reset()
-            batches.shuffle=False
-        preds=self.model.predict_generator(batches, steps=(batches.n // 32) + 1, verbose=1)
+            batches.shuffle = False
+        preds = self.model.predict_generator(batches, steps=(batches.n // 32) + 1, verbose=1)
         if preds.shape[0] > 1:
-            probs=preds[:, 0]
+            probs = preds[:, 0]
         else:
-            probs=preds
+            probs = preds
         return probs
 
     def _calculate_val_predictions(self, val_batches):  # TODO: call automatically for dirichlet ensemble
-        self.val_probs=self._calculate_predictions(val_batches)
-        self.val_classes=np.array(val_batches.classes)
+        self.val_probs = self._calculate_predictions(val_batches)
+        self.val_classes = np.array(val_batches.classes)
         return self.val_probs
 
     def _calculate_train_predictions(self, train_batches):  # TODO: call automatically for dirichlet ensemble
-        self.train_probs=self._calculate_predictions(train_batches)
-        self.train_classes=np.array(train_batches.classes)
+        self.train_probs = self._calculate_predictions(train_batches)
+        self.train_classes = np.array(train_batches.classes)
         return self.train_probs
 
     def _load_keras(self):
@@ -144,32 +139,32 @@ class Member:
         print("Keras Model Loaded:", keras_modelpath)
         return self.model
 
-    def save(self, folder="./premodels/", save_kerasmodel = False):
+    def save(self, folder="./premodels/", save_kerasmodel=False):
         """
         Saves member object to folder
         Args:
             folder: the folder where models should be saved to. Create if not exists.
-            save_kerasmodel: if it should save the keras model as part of object. 
+            save_kerasmodel: if it should save the keras model as part of object.
                 Recommendation is to load keras separately with method `load_kerasmodel`
         """
-        if folder[-1] !=  os.sep:
-            folder +=  os.sep
+        if folder[-1] != os.sep:
+            folder += os.sep
         if not os.path.exists(folder):
             os.mkdir(folder)
-        if not os.path.exists(folder+self.name):
-            os.mkdir(folder+self.name)
-        if  save_kerasmodel:
-            joblib.dump(self, os.path.join(folder+self.name, "member.joblib"))
+        if not os.path.exists(folder + self.name):
+            os.mkdir(folder + self.name)
+        if save_kerasmodel:
+            joblib.dump(self, os.path.join(folder + self.name, "member.joblib"))
         else:
             temp = self.model
             self.model = None  # Remove Keras model from variable
-            joblib.dump(self, os.path.join(folder+self.name, "member.joblib"))
+            joblib.dump(self, os.path.join(folder + self.name, "member.joblib"))
             self.model = temp
 
 
 class Ensemble(object):
     """Base Ensemble Definition."""
-    
+
     @abstractmethod
     def add_member(self, member):
         """
@@ -284,7 +279,7 @@ class DirichletEnsemble(Ensemble):
             result = "Better Performance. Achieved an AUC of {} and the best ensemble member " \
                      "alone achieves an AUC of {}".format(self.bestauc, modelbestauc)
         print(result)
-        return    
+        return
 
 
 class StackEnsemble(Ensemble):
@@ -303,15 +298,15 @@ class StackEnsemble(Ensemble):
         # Initialize Parameters:
         self.members = []
         self._nmembers = 0
-        self.predictions = None 
+        self.predictions = None
 
-    def __repr__(self):        
+    def __repr__(self):
         reps = [member.name for member in self.members]
-        return "<StackEnsemble: ["+", ".join(reps)+"]>"
-    
-    def __str__(self):        
+        return "<StackEnsemble: [" + ", ".join(reps) + "]>"
+
+    def __str__(self):
         reps = [member.name for member in self.members]
-        return "StackEnsemble: with"+str(self._nmembers)+" Base-Learners ["+", ".join(reps)+"]"
+        return "StackEnsemble: with" + str(self._nmembers) + " Base-Learners [" + ", ".join(reps) + "]"
 
     def add_member(self, member):
         """
@@ -344,7 +339,7 @@ class StackEnsemble(Ensemble):
         # Assumption: all members have same train_batches.classes
         if X is None or y is None:
             return self._fit_train()
-        return self.model.fit(X, y, **kwargs)  
+        return self.model.fit(X, y, **kwargs)
 
     def predict(self, X=None, kwargs={}):
         """
@@ -359,7 +354,7 @@ class StackEnsemble(Ensemble):
             X = self._get_pred_X()
 
         try:
-            self.predictions = self.model.predict_proba(X, **kwargs)[:,0]
+            self.predictions = self.model.predict_proba(X, **kwargs)[:, 0]
         except Exception as e:
             print(e)
             self.predictions = self.model.predict(X, **kwargs)
@@ -369,7 +364,7 @@ class StackEnsemble(Ensemble):
         """
         Prints information about the performance of base and meta learners based on validation data
         Args:
-            probabilities_val: (optional) probabilities/prediction on validation data 
+            probabilities_val: (optional) probabilities/prediction on validation data
         """
         modelbestauc = 0
         if probabilities_val is None:
@@ -380,17 +375,17 @@ class StackEnsemble(Ensemble):
             valprobs = member.val_probs
             auc = metrics.roc_auc_score(member.val_classes, valprobs)
             if auc < 0.5:
-                valprobs = [1-x for x in valprobs]
+                valprobs = [1 - x for x in valprobs]
             auc = metrics.roc_auc_score(member.val_classes, valprobs)
             if auc > modelbestauc:
                 modelbestauc = auc
-            print(member.name,"AUC:", auc)
+            print(member.name, "AUC:", auc)
         auc = metrics.roc_auc_score(val_classes, probabilities_val)
         if auc < 0.5:
-            probabilities_val = [1-x for x in probabilities_val]
+            probabilities_val = [1 - x for x in probabilities_val]
         auc = metrics.roc_auc_score(val_classes, probabilities_val)
-        print("Ensemble AUC:", auc)    
-        return auc    
+        print("Ensemble AUC:", auc)
+        return auc
 
     def _get_X(self, attrname):
         X = []
@@ -408,49 +403,51 @@ class StackEnsemble(Ensemble):
     def _get_val_X(self):
         return self._get_X("val_probs")
 
-    def _get_pred_X(self):   
-        return self._get_X("submission_probs") 
+    def _get_pred_X(self):
+        return self._get_X("submission_probs")
 
     def _fit_train(self):
         return self.fit(self._get_train_X(), self.members[0].train_classes)
 
     def _fit_submission(self):
         """
-        Fits model on training and validation data. 
+        Fits model on training and validation data.
         Useful when training the meta-learner for final submission prediction
         """
         X1 = self._get_train_X()
         X2 = self._get_val_X()
         y1 = self.members[0].train_classes
         y2 = self.members[0].val_classes
-        X = np.concatenate((X1,X2))
-        y = np.concatenate((y1,y2))
+        X = np.concatenate((X1, X2))
+        y = np.concatenate((y1, y2))
         return self.fit(X, y)
 
     def _predict_val(self):
         return self.predict(self._get_val_X())
-    
+
     def _test(self):
         """
         Test assumption that all members' classes have same shape and values. Names should be unique.
         This is an internal condition for class structures.
         """
-        if self._nmembers < 2: 
+        if self._nmembers < 2:
             return True
-        t1=[(_compare_arrays(self.members[i].train_classes, self.members[i+1].train_classes)) for i in range(self._nmembers-1)]
-        t2=[(_compare_arrays(self.members[i].val_classes, self.members[i+1].val_classes)) for i in range(self._nmembers-1)]
-        assert(np.sum(t1) == self._nmembers-1)
-        assert(np.sum(t2) == self._nmembers-1)
+        t1 = [(_compare_arrays(self.members[i].train_classes,
+                               self.members[i + 1].train_classes)) for i in range(self._nmembers - 1)]
+        t2 = [(_compare_arrays(self.members[i].val_classes,
+                               self.members[i + 1].val_classes)) for i in range(self._nmembers - 1)]
+        assert(np.sum(t1) == self._nmembers - 1)
+        assert(np.sum(t2) == self._nmembers - 1)
         names = [self.members[i].name for i in range(self._nmembers)]
         assert(len(list(names)) == len(set(names)))
         return True
-    
-    def save(self, folder="./premodels/", save_kerasmodel = False):  # TODO: Document
+
+    def save(self, folder="./premodels/", save_kerasmodel=False):  # TODO: Document
         """
         Saves meta-learner and base-learner of ensemble into folder / directory
         Args:
             folder: the folder where models should be saved to. Create if not exists.
-            save_kerasmodel: if members / base-learners should save the keras model as part of object. 
+            save_kerasmodel: if members / base-learners should save the keras model as part of object.
         """
         if not os.path.exists(folder):
             os.mkdir(folder)
@@ -462,9 +459,9 @@ class StackEnsemble(Ensemble):
         self.members = temp
         self._nmembers = len(self.members)
         return self
-    
+
     @classmethod
-    def load(cls, folder="./premodels/"): 
+    def load(cls, folder="./premodels/"):
         """
         Loads meta-learner and base-learners from folder / directory
         Args:
@@ -474,12 +471,13 @@ class StackEnsemble(Ensemble):
         """
         stack = joblib.load(os.path.join(folder, "stackensemble.joblib"))
         stack.members = []
-        if folder[-1] !=  os.sep:
-            folder +=  os.sep
-        for fn in glob.glob(folder+"**/"):
+        if folder[-1] != os.sep:
+            folder += os.sep
+        for fn in glob.glob(folder + "**/"):
             member = Member.load(fn)
             stack.add_member(member)
         return stack
+
 
 def _compare_arrays(a1, a2):
     if a1 is None and a2 is None:
@@ -489,5 +487,5 @@ def _compare_arrays(a1, a2):
     if a1 is not None and a2 is None:
         return False
     c1 = a1.shape == a2.shape
-    c2 = np.sum(a1==a2) == len(a1)
+    c2 = np.sum(a1 == a2) == len(a1)
     return c1 and c2
