@@ -16,98 +16,77 @@ import glob
 
 class Member:
     """
-    Representation of a single keras model member of an Ensemble
+    Representation of a single keras model member (Base-Learner) of an Ensemble 
     """
-    def __init__(self, model=None, name=None, train_batches=None, val_batches=None, pred_batches=None,
-                 submission_probs=None):
+    def __init__(self, name=None, keras_model=None, train_batches=None, val_batches=None,
+                 submission_probs=None, keras_modelpath=None, keras_kwargs=None):
         """
         Constructor of a Keras Ensemble Member for a Binary Classification (Image Recognition) Task.
-        If `val_predictions` is None, then `val_predictions` will be calculated using `imggen`.
+        Internal class probabilities are calculates based on ImageDataGenerators.
+        If you wish to provide these directly, use `from_probs` constructor
         Args:
-            model: the (pre-trained) keras model
             name: name of the model. Must be unique.
-            train_batches: an instance of Keras `ImageDataGenerator` for training the Stacked Model
-            val_batches: an instance of Keras `ImageDataGenerator` for validating the Stacked Model
-            pred_batches: an instance of Keras `ImageDataGenerator` for prediction
-            submission_probs: the submission prediction probabilities, to be weighted in case of DirichletEnsemble building
+            model: the (pre-trained) keras model. Or provide `keras_modelpath` instead.
+            train_batches: an instance of Keras `ImageDataGenerator` for training the Meta-Learner
+            val_batches: an instance of Keras `ImageDataGenerator` for validating the Meta-Learner
+            submission_probs: the submission prediction probabilities
+            keras_modelpath: path to load keras model from (if `model` argument is None)
+            keras_kwargs: kwargs for keras `load_model` (if `model` argument is None)
         """
         assert(name is not None)
-        self.model=model
-        self.train_batches=train_batches
-        self.val_batches=val_batches
-        self.pred_batches=pred_batches
-        self.submission_probs=submission_probs
         self.name=name
+        self.model=keras_model
+        self.submission_probs=submission_probs
+        self._keras_modelpath = keras_modelpath
+        self._keras_kwargs = keras_kwargs
         #Initialize Params
         self.val_probs=None
         self.train_probs=None
         self.val_classes = None
         self.train_classes = None
-        self._keras_modelpath = None
-        self._keras_kwargs = None
+        if (keras_model is None) and (keras_modelpath is not None):
+            self._load_keras()
+        if val_batches is not None:
+            self._calculate_val_predictions(val_batches)
+        if train_batches is not None:            
+            self._calculate_train_predictions(train_batches)
 
-    def _calculate_predictions(self, batches):  # TODO: call automatically for dirichlet ensemble
-        if hasattr(batches, 'shuffle'):
-            batches.reset()
-            batches.shuffle=False
-        preds=self.model.predict_generator(batches, steps=(batches.n // 32) + 1, verbose=1)
-        if preds.shape[0] > 1:
-            print("Caution! This program is still not supporting multi-class problems.")
-            probs=preds[:, 0]
-        else:
-            probs=preds
-        return probs
+    def __repr__(self):        
+         return "<Member: "+self.name+">"
 
-    def _calculate_val_predictions(self):  # TODO: call automatically for dirichlet ensemble
-        self.val_probs=self._calculate_predictions(self.val_batches)
-        self.val_classes=self.val_batches.classes
-        return self.val_probs
+    def __str__(self):        
+         return "Member: "+self.name
 
-    def _calculate_train_predictions(self):  # TODO: call automatically for dirichlet ensemble
-        self.train_probs=self._calculate_predictions(self.train_batches)
-        self.train_classes=self.train_batches.classes
-        return self.train_probs
+    def __eq__(self, other):
+        c1 = self.name == other.name
+        c2 = _compare_arrays(self.train_classes, other.train_classes)
+        c3 = _compare_arrays(self.val_classes, other.val_classes)
+        c4 = _compare_arrays(self.val_probs, other.val_probs)
+        c5 = _compare_arrays(self.train_probs, other.train_probs)
+        return c1 and c2 and c3 and c4 and c5
 
-    def load_kerasmodel(self, keras_modelpath=None, keras_kwargs={}):
-        self.model = load_model(keras_modelpath, **keras_kwargs)
-        self._keras_modelpath = keras_modelpath
-        self._keras_kwargs = keras_kwargs
-        print("Keras Model Loaded:", keras_modelpath)
-    
-    def _load_keras(self):
-        return self.load_kerasmodel(self._keras_modelpath, self._keras_kwargs)
-
-    def save(self, folder="./premodels/", save_kerasmodel = False):  # TODO: Document
+    @classmethod
+    def from_probs(cls, name, train_probs, train_classes, val_probs, val_classes, submission_probs):
         """
-        Saves member to folder
+        Constructor based on class probabilities, not on `ImageDataGenerator`.
+        Useful if one wants to calculated the keras model's probabilities idependently.
         Args:
-            folder: the folder where models should be saved to. Create if not exists.
-            save_kerasmodel: if it should save the keras model as part of object. 
-                Recommendation is to load keras separately with method `load_kerasmodel`
+            name: name of the model. Must be unique.
+            train_probs: probabilities of positive class for training the Meta-Learner
+            train_classes: ground truth (classes) for training the Meta-Learner
+            val_probs: probabilities of positive class for validating the Meta-Learner
+            val_classes: ground truth (classes) for validating the Meta-Learner
+            submission_probs: the submission prediction probabilities
+        Returns:
+            a Member object
         """
-        if folder[-1] !=  os.sep:
-            folder +=  os.sep
-        if not os.path.exists(folder):
-            os.mkdir(folder)
-        if not os.path.exists(folder+self.name):
-            os.mkdir(folder+self.name)
-        if self.val_probs is None:
-            try:
-                self.val_probs=self._calculate_val_predictions()
-            except Exception as e:
-                print(e)
-        if self.train_probs is None:
-            try:
-                self.train_probs=self._calculate_train_predictions()
-            except Exception as e:
-                print(e)
-        if  save_kerasmodel:
-            joblib.dump(self, os.path.join(folder+self.name, "member.joblib"))
-        else:
-            temp = self.model
-            self.model = None  # Remove Keras model from variable
-            joblib.dump(self, os.path.join(folder+self.name, "member.joblib"))
-            self.model = temp
+        member = cls(name=name)
+        member.train_probs = np.array(train_probs)
+        member.train_classes = np.array(train_classes)
+        member.val_probs = np.array(val_probs)
+        member.val_classes = np.array(val_classes)
+        member.submission_probs = np.array(submission_probs)
+        return member
 
     @classmethod
     def load(cls, folder=None):
@@ -125,6 +104,67 @@ class Member:
             except Exception as e:
                 warnings.warn(str(e))
         return member
+
+    def _calculate_predictions(self, batches):  # TODO: call automatically for dirichlet ensemble
+        if hasattr(batches, 'shuffle'):
+            batches.reset()
+            batches.shuffle=False
+        preds=self.model.predict_generator(batches, steps=(batches.n // 32) + 1, verbose=1)
+        if preds.shape[0] > 1:
+            probs=preds[:, 0]
+        else:
+            probs=preds
+        return probs
+
+    def _calculate_val_predictions(self, val_batches):  # TODO: call automatically for dirichlet ensemble
+        self.val_probs=self._calculate_predictions(val_batches)
+        self.val_classes=np.array(val_batches.classes)
+        return self.val_probs
+
+    def _calculate_train_predictions(self, train_batches):  # TODO: call automatically for dirichlet ensemble
+        self.train_probs=self._calculate_predictions(train_batches)
+        self.train_classes=np.array(train_batches.classes)
+        return self.train_probs
+
+    def _load_keras(self):
+        return self.load_kerasmodel(self._keras_modelpath, self._keras_kwargs)
+
+    def load_kerasmodel(self, keras_modelpath=None, keras_kwargs={}):
+        """
+        Utility method for loading Keras model
+        Args:
+            keras_modelpath: path to keras model
+            keras_kwargs: arguments for keras `load_model`
+        """
+        if keras_kwargs is None:
+            keras_kwargs = {}
+        self.model = load_model(keras_modelpath, **keras_kwargs)
+        self._keras_modelpath = keras_modelpath
+        self._keras_kwargs = keras_kwargs
+        print("Keras Model Loaded:", keras_modelpath)
+        return self.model
+
+    def save(self, folder="./premodels/", save_kerasmodel = False):
+        """
+        Saves member object to folder
+        Args:
+            folder: the folder where models should be saved to. Create if not exists.
+            save_kerasmodel: if it should save the keras model as part of object. 
+                Recommendation is to load keras separately with method `load_kerasmodel`
+        """
+        if folder[-1] !=  os.sep:
+            folder +=  os.sep
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+        if not os.path.exists(folder+self.name):
+            os.mkdir(folder+self.name)
+        if  save_kerasmodel:
+            joblib.dump(self, os.path.join(folder+self.name, "member.joblib"))
+        else:
+            temp = self.model
+            self.model = None  # Remove Keras model from variable
+            joblib.dump(self, os.path.join(folder+self.name, "member.joblib"))
+            self.model = temp
 
 
 class Ensemble(object):
@@ -153,6 +193,7 @@ class Ensemble(object):
         Predict using fitted ensemble members
         """
         raise NotImplementedError
+
 
 class DirichletEnsemble(Ensemble):
     """
@@ -265,6 +306,14 @@ class StackEnsemble(Ensemble):
         self.members = []
         self._nmembers = 0
         self.predictions = None 
+
+    def __repr__(self):        
+        reps = [member.name for member in self.members]
+        return "<StackEnsemble: ["+", ".join(reps)+"]>"
+    
+    def __str__(self):        
+        reps = [member.name for member in self.members]
+        return "StackEnsemble: with"+str(self._nmembers)+" Base-Learners ["+", ".join(reps)+"]"
 
     def add_member(self, member):
         """
@@ -383,17 +432,15 @@ class StackEnsemble(Ensemble):
     def _predict_val(self):
         return self.predict(self._get_val_X())
     
-    def _test_arrays(self, a1, a2):
-        assert(a1.shape == a2.shape)
-        return np.sum(a1==a2) == len(a1)  # All elements of array are equal
-
     def _test(self):
         """
         Test assumption that all members' classes have same shape and values. Names should be unique.
         This is an internal condition for class structures.
         """
-        t1=[(self._test_arrays(self.members[i].train_classes, self.members[i+1].train_classes)) for i in range(self._nmembers-1)]
-        t2=[(self._test_arrays(self.members[i].val_classes, self.members[i+1].val_classes)) for i in range(self._nmembers-1)]
+        if self._nmembers < 2: 
+            return True
+        t1=[(_compare_arrays(self.members[i].train_classes, self.members[i+1].train_classes)) for i in range(self._nmembers-1)]
+        t2=[(_compare_arrays(self.members[i].val_classes, self.members[i+1].val_classes)) for i in range(self._nmembers-1)]
         assert(np.sum(t1) == self._nmembers-1)
         assert(np.sum(t2) == self._nmembers-1)
         names = [self.members[i].name for i in range(self._nmembers)]
@@ -411,24 +458,38 @@ class StackEnsemble(Ensemble):
             os.mkdir(folder)
         [member.save(folder=folder, save_kerasmodel=save_kerasmodel) for member in self.members]
         temp = self.members
-        self.members = []  # Reset base-learners. These are loaded idependently
+        self.members = None  # Reset base-learners. These are loaded idependently
         self._nmembers = 0
         joblib.dump(self, os.path.join(folder, "stackensemble.joblib"))
         self.members = temp
+        self._nmembers = len(self.members)
+        return self
     
     @classmethod
     def load(cls, folder="./premodels/"): 
         """
-        Lods models from folder / directory
+        Loads meta-learner and base-learners from folder / directory
         Args:
             folder: directory where models should be loaded from
         Returns:
-            loaded StackEnsemble
+            loaded StackEnsemble with Members
         """
         stack = joblib.load(os.path.join(folder, "stackensemble.joblib"))
+        stack.members = []
         if folder[-1] !=  os.sep:
             folder +=  os.sep
         for fn in glob.glob(folder+"**/"):
             member = Member.load(fn)
             stack.add_member(member)
         return stack
+
+def _compare_arrays(a1, a2):
+    if a1 is None and a2 is None:
+        return True
+    if a1 is None and a2 is not None:
+        return False
+    if a1 is not None and a2 is None:
+        return False
+    c1 = a1.shape == a2.shape
+    c2 = np.sum(a1==a2) == len(a1)
+    return c1 and c2
