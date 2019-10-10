@@ -141,7 +141,6 @@ def test_stackensemble():
 
     member1.load_kerasmodel("./premodels/model1.h5")
     member2.load_kerasmodel("./premodels/model2.h5")
-    print(member1._keras_modelpath)
     stack3 = StackEnsemble()
     stack3.add_member(member1)
     stack3.add_member(member2)
