@@ -256,7 +256,7 @@ class DirichletEnsemble(Ensemble):
             if auc > modelbestauc:
                 modelbestauc = auc
             print(self.members[i].name, "- Weight:", self.bestweights[i], "- Single AUC:", auc)
-        print("DirichletEnsemble AUC:", modelbestauc)
+        print("DirichletEnsemble AUC:", self.bestauc)
         return
 
 
