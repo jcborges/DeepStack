@@ -14,7 +14,7 @@ class Member:
     Representation of a single keras model member (Base-Learner) of an Ensemble
     """
     def __init__(self, name=None, keras_model=None, train_batches=None, val_batches=None,
-                 submission_probs=None, keras_modelpath=None, keras_kwargs=None):
+                 submission_probs=None, keras_modelpath=None, keras_kwargs={}):
         """
         Constructor of a Keras Ensemble Member for a Binary Classification (Image Recognition) Task.
         Internal class probabilities are calculates based on ImageDataGenerators.
@@ -32,15 +32,13 @@ class Member:
         self.name = name
         self.model = keras_model
         self.submission_probs = submission_probs
-        self._keras_modelpath = keras_modelpath
-        self._keras_kwargs = keras_kwargs
-        #Initialize Params
+        # Initialize Params
         self.val_probs = None
         self.train_probs = None
         self.val_classes = None
         self.train_classes = None
         if (keras_model is None) and (keras_modelpath is not None):
-            self._load_keras()
+            self.load_kerasmodel(self.keras_modelpath, self.keras_kwargs)
         if val_batches is not None:
             self._calculate_val_predictions(val_batches)
         if train_batches is not None:
@@ -93,11 +91,6 @@ class Member:
         """
         path = os.path.join(folder, "member.joblib")
         member = joblib.load(path)
-        if member.model is None:
-            try:
-                member._load_keras()
-            except Exception as e:
-                warnings.warn(str(e))
         return member
 
     def _calculate_predictions(self, batches):  # TODO: call automatically for dirichlet ensemble
@@ -121,9 +114,6 @@ class Member:
         self.train_classes = np.array(train_batches.classes)
         return self.train_probs
 
-    def _load_keras(self):
-        return self.load_kerasmodel(self._keras_modelpath, self._keras_kwargs)
-
     def load_kerasmodel(self, keras_modelpath=None, keras_kwargs={}):
         """
         Utility method for loading Keras model
@@ -134,8 +124,6 @@ class Member:
         if keras_kwargs is None:
             keras_kwargs = {}
         self.model = load_model(keras_modelpath, **keras_kwargs)
-        self._keras_modelpath = keras_modelpath
-        self._keras_kwargs = keras_kwargs
         print("Keras Model Loaded:", keras_modelpath)
         return self.model
 
@@ -271,14 +259,7 @@ class DirichletEnsemble(Ensemble):
             if auc > modelbestauc:
                 modelbestauc = auc
             print(self.members[i].name, "- Weight:", self.bestweights[i], "- Single AUC:", auc)
-        result = ""
-        if modelbestauc > self.bestauc:
-            result = "Worse Performance. Achieved an AUC of {} but the best ensemble member " \
-                     "alone achieves an AUC of {}".format(self.bestauc, modelbestauc)
-        else:
-            result = "Better Performance. Achieved an AUC of {} and the best ensemble member " \
-                     "alone achieves an AUC of {}".format(self.bestauc, modelbestauc)
-        print(result)
+        print("DirichletEnsemble AUC:", modelbestauc)
         return
 
 
@@ -352,7 +333,6 @@ class StackEnsemble(Ensemble):
         """
         if X is None:
             X = self._get_pred_X()
-
         try:
             self.predictions = self.model.predict_proba(X, **kwargs)[:, 0]
         except Exception as e:
