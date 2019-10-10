@@ -25,17 +25,17 @@ DeepStack offer an interface to fit the Meta-Learner on the predictions of the B
 from deepstack import Member
 from deepstack import StackEnsemble
 
-model1 = ...  # A Keras Model
+model1 = ...  # A Keras pre-trained Model
 train_batches1 =  ...  # A Keras Data Iterator - Training Data for Meta-Learner
 val_batches1 =  ...  # A Keras Data Iterator - Validation Data for Meta-Learner
-pred_batches1 =  ...  # A Keras Data Iterator - Data to be predicted (no classes necessary)
-member1 = Member(name="Model1", keras_model=model1, train_batches=train_batches1, val_batches=val_batches1, pred_batches = pred_batches1)
+submission_probs1 =  ... # The  prediction probabilities of the base-learner (serves as prediction input for meta-learner) ...  
+member1 = Member(name="Model1", keras_model=model1, train_batches=train_batches1, val_batches=val_batches1, submission_probs = submission_probs1)
 
-model2 = ...  # A Keras Model
-train_batches2 =  ...  # A Keras Data Iterator - Training Data for Meta-Learner
-val_batches2 =  ...  # A Keras Data Iterator - Validation Data for Meta-Learner
-pred_batches2 =  ...  # A Keras Data Iterator - Data to be predicted (no classes necessary)
-member2 = Member(name="Model2", keras_model=model2, train_batches=train_batches2, val_batches=val_batches2, pred_batches = pred_batches2)
+model2 = ...  
+train_batches2 =  ...  
+val_batches2 =  ...  
+submission_probs2 =  ...
+member2 = Member(name="Model2", keras_model=model2, train_batches=train_batches2, val_batches=val_batches2, submission_probs = submission_probs2)
 
 stack = StackEnsemble()
 stack.add_member(member1)  # Assumption: the data iterators of base-learners iterate over the same data and have same shape and classes.
