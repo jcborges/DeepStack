@@ -15,8 +15,10 @@ pip install git+https://github.com/jcborges/DeepStack
 ```
 
 ## Stacking
-Stacking is based on training a (Sklearn) Meta-Learner on top of Keras pre-trained Base-Learners.
-DeepStack offer an interface to fit the Meta-Learner on the predictions of the Base-Learners.
+Stacking is based on training a Meta-Learner on top of Keras pre-trained Base-Learners.
+DeepStack offer an interface to fit the Meta-Learner on the predictions of the Base-Learners according to following schema:
+
+![](./Stacking.png)
 
 
 #### Usage 
