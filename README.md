@@ -16,7 +16,7 @@ pip install git+https://github.com/jcborges/DeepStack
 
 ## Stacking
 Stacking is based on training a Meta-Learner on top of Keras pre-trained Base-Learners.
-DeepStack offer an interface to fit the Meta-Learner on the predictions of the Base-Learners according to following schema:
+DeepStack offers an interface to fit the Meta-Learner on the predictions of the Base-Learners according to following schema:
 
 ![](./Stacking.png)
 
@@ -27,7 +27,7 @@ DeepStack offer an interface to fit the Meta-Learner on the predictions of the B
 from deepstack import Member
 from deepstack import StackEnsemble
 
-model1 = ...  # A Keras pre-trained Model
+model1 = ...  # A Keras pre-trained Model (Base-Learner)
 train_batches1 =  ...  # A Keras Data Iterator - Training Data for Meta-Learner
 val_batches1 =  ...  # A Keras Data Iterator - Validation Data for Meta-Learner
 submission_probs1 =  ... # The  prediction probabilities of the base-learner (serves as prediction input for meta-learner) ...  
