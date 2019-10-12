@@ -6,7 +6,6 @@ DeepStack: Ensembling Keras Deep Learning Models into the next Performance Level
 ---
 
 DeepStack is a Python module for building Deep Learning Ensembles built on top of Keras and distributed under the MIT license.
-DeepStack is still under development and currently supports binary classifiers. 
 
 
 ## Installation
