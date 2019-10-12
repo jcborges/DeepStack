@@ -313,10 +313,13 @@ class StackEnsemble(Ensemble):
             y: training classes for meta-learner
             kwargs: further arguments for the fit function
         """
-        assert(len(self.members) > 1)
+        assert(len(self.members) > 1) 
         # Assumption: all members have same train_batches.classes
         if X is None or y is None:
             return self._fit_train()
+        assert(X.ndim <= 3)
+        if X.ndim == 3:
+            X = X.reshape(X[0], X[1] * X[2])
         return self.model.fit(X, y, **kwargs)
 
     def predict(self, X=None, kwargs={}):
