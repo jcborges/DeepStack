@@ -52,10 +52,10 @@ class Member:
 
     def __eq__(self, other):
         c1 = self.name == other.name
-        c2 = _compare_arrays(self.train_classes, other.train_classes)
-        c3 = _compare_arrays(self.val_classes, other.val_classes)
-        c4 = _compare_arrays(self.val_probs, other.val_probs)
-        c5 = _compare_arrays(self.train_probs, other.train_probs)
+        c2 = np.array_equal(self.train_classes, other.train_classes)
+        c3 = np.array_equal(self.val_classes, other.val_classes)
+        c4 = np.array_equal(self.val_probs, other.val_probs)
+        c5 = np.array_equal(self.train_probs, other.train_probs)
         return c1 and c2 and c3 and c4 and c5
 
     @classmethod
@@ -97,21 +97,26 @@ class Member:
         if hasattr(batches, 'shuffle'):
             batches.reset()
             batches.shuffle = False
-        preds = self.model.predict_generator(batches, steps=(batches.n // 32) + 1, verbose=1)
-        if preds.shape[0] > 1:
-            probs = preds[:, 0]
-        else:
-            probs = preds
-        return probs
+        return self.model.predict_generator(batches, steps=(batches.n // batches.batch_size) + 1, verbose=1)
 
     def _calculate_val_predictions(self, val_batches):  # TODO: call automatically for dirichlet ensemble
         self.val_probs = self._calculate_predictions(val_batches)
-        self.val_classes = np.array(val_batches.classes)
+        if hasattr(val_batches, 'classes'):
+            self.val_classes = np.array(val_batches.classes)
+        elif hasattr(val_batches, 'y'):
+            self.val_classes = np.array(val_batches.y)
+        else:
+            raise("No known class in data batch")
         return self.val_probs
 
     def _calculate_train_predictions(self, train_batches):  # TODO: call automatically for dirichlet ensemble
         self.train_probs = self._calculate_predictions(train_batches)
-        self.train_classes = np.array(train_batches.classes)
+        if hasattr(train_batches, 'classes'):
+            self.train_classes = np.array(train_batches.classes)
+        elif hasattr(train_batches, 'y'):
+            self.train_classes = np.array(train_batches.y)
+        else:
+            raise("No known class in data batch")
         return self.train_probs
 
     def load_kerasmodel(self, keras_modelpath=None, keras_kwargs={}):
@@ -184,17 +189,14 @@ class DirichletEnsemble(Ensemble):
     It weights the ensemble members optimizing the AUC-Score based on a validation dataset.
     The weight optimization search is performed with randomized search based on the dirichlet distribution.
     """
-    def __init__(self, val_classes, positive_class=True, N=10000):
+    def __init__(self, N=10000):
         """
         Constructor of a Keras Ensemble Binary Classifier
         Args:
             val_classes: classes of validation dataset, from which the enseble weights will be calculated
             N: the number of times weights should be (randomly) tried out, sampled from a dirichlet distribution
-            positive_class:  specifies which class from `val_classes` should count as positive for the AUC calculation
         """
-        self.val_classes = val_classes
         self.n = N
-        self.positive_class = positive_class
         # Initialize Parameters:
         self.members = []
         self.bestweights = []
@@ -217,15 +219,15 @@ class DirichletEnsemble(Ensemble):
         Calculates ensemble weights, optimizing the AUC Binary Classification Metric using randomized
         search with the dirichlet distribution.
         """
-        assert(self.val_classes is not None)
         assert(len(self.members) > 1)
+        val_classes = self.members[0].val_classes
 
         aucbest = 0
         rsbest = None
         for i in range(self.n):
             rs = np.random.dirichlet(np.ones(self._nmembers), size=1)[0]
             preds = np.sum(np.array([self.members[i].val_probs * rs[i] for i in range(self._nmembers)]), axis=0)
-            auc = metrics.roc_auc_score([x == self.positive_class for x in self.val_classes], preds)
+            auc = metrics.roc_auc_score(val_classes, preds)
             if auc > aucbest:
                 if verbose:
                     print(auc, i, rs)  # TODO: Proper logging
@@ -249,14 +251,11 @@ class DirichletEnsemble(Ensemble):
         Prints information about the ensemble members and its weights as well as single and ensemble AUC performance
         on validation dataset.
         """
-        modelbestauc = 0
         for i in range(self._nmembers):
-            model = self.members[i]
-            auc = metrics.roc_auc_score([x == self.positive_class for x in self.val_classes], model.val_probs)
-            if auc > modelbestauc:
-                modelbestauc = auc
+            member = self.members[i]
+            auc = metrics.roc_auc_score(member.val_classes, member.val_probs)
             print(self.members[i].name, "- Weight:", self.bestweights[i], "- Single AUC:", auc)
-        print("DirichletEnsemble AUC:", modelbestauc)
+        print("DirichletEnsemble AUC:", self.bestauc)
         return
 
 
@@ -319,26 +318,30 @@ class StackEnsemble(Ensemble):
             return self._fit_train()
         assert(X.ndim <= 3)
         if X.ndim == 3:
-            X = X.reshape(X[0], X[1] * X[2])
+            X = X.reshape(X.shape[0], X.shape[1] * X.shape[2])
         return self.model.fit(X, y, **kwargs)
 
-    def predict(self, X=None, kwargs={}):
+    def predict(self, X=None, predict_proba=False, kwargs={}):
         """
         Meta-Model prediction for the probabilities of the positive class as a regression problem
         Args:
             X: input data to be predicted
             kwargs: further arguments for prediction function
+            predict_proba: if should call method `predict_proba`instead of `predict`
         Returns:
             the predicted probabilities as np.array
         """
         if X is None:
             X = self._get_pred_X()
-        try:
-            self.predictions = self.model.predict_proba(X, **kwargs)[:, 0]
-        except Exception as e:
-            print(e)
+        if X.ndim == 3:
+            X = X.reshape(X.shape[0], X.shape[1] * X.shape[2])
+        if predict_proba and hasattr(self.model, 'predict_proba'):
+            self.predictions = self.model.predict_proba(X, **kwargs)
+        elif hasattr(self.model, 'predict'):
             self.predictions = self.model.predict(X, **kwargs)
-        return self.predictions
+        else:
+            raise("Model has no predict function")
+        return np.array(self.predictions)
 
     def describe(self, probabilities_val=None):
         """
@@ -352,17 +355,10 @@ class StackEnsemble(Ensemble):
         val_classes = self.members[0].val_classes  # Assumption: all members have same val_classes
         for i in range(self._nmembers):
             member = self.members[i]
-            valprobs = member.val_probs
-            auc = metrics.roc_auc_score(member.val_classes, valprobs)
-            if auc < 0.5:
-                valprobs = [1 - x for x in valprobs]
-            auc = metrics.roc_auc_score(member.val_classes, valprobs)
+            auc = metrics.roc_auc_score(member.val_classes, member.val_probs)
             if auc > modelbestauc:
                 modelbestauc = auc
             print(member.name, "AUC:", auc)
-        auc = metrics.roc_auc_score(val_classes, probabilities_val)
-        if auc < 0.5:
-            probabilities_val = [1 - x for x in probabilities_val]
         auc = metrics.roc_auc_score(val_classes, probabilities_val)
         print("Ensemble AUC:", auc)
         return auc
@@ -412,10 +408,10 @@ class StackEnsemble(Ensemble):
         """
         if self._nmembers < 2:
             return True
-        t1 = [(_compare_arrays(self.members[i].train_classes,
-                               self.members[i + 1].train_classes)) for i in range(self._nmembers - 1)]
-        t2 = [(_compare_arrays(self.members[i].val_classes,
-                               self.members[i + 1].val_classes)) for i in range(self._nmembers - 1)]
+        t1 = [(np.array_equal(self.members[i].train_classes,
+                              self.members[i + 1].train_classes)) for i in range(self._nmembers - 1)]
+        t2 = [(np.array_equal(self.members[i].val_classes,
+                              self.members[i + 1].val_classes)) for i in range(self._nmembers - 1)]
         assert(np.sum(t1) == self._nmembers - 1)
         assert(np.sum(t2) == self._nmembers - 1)
         names = [self.members[i].name for i in range(self._nmembers)]
@@ -457,15 +453,3 @@ class StackEnsemble(Ensemble):
             member = Member.load(fn)
             stack.add_member(member)
         return stack
-
-
-def _compare_arrays(a1, a2):
-    if a1 is None and a2 is None:
-        return True
-    if a1 is None and a2 is not None:
-        return False
-    if a1 is not None and a2 is None:
-        return False
-    c1 = a1.shape == a2.shape
-    c2 = np.sum(a1 == a2) == len(a1)
-    return c1 and c2
