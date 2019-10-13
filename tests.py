@@ -3,34 +3,21 @@ from deepstack import DirichletEnsemble
 from deepstack import StackEnsemble
 from sklearn.datasets.samples_generator import make_blobs
 from keras.models import Sequential
-from keras.layers import Dense
 import random
 import numpy as np
 import wget 
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
-from sklearn.preprocessing import LabelEncoder
 from sys import platform
 from keras.utils import to_categorical
-
-from matplotlib import pyplot
 from keras.datasets import cifar10
-from keras.utils import to_categorical
-import random
 import keras
-from keras.models import Sequential
-from keras.utils import np_utils
 from keras.preprocessing.image import ImageDataGenerator
-from keras.layers import Dense, Activation, Flatten, Dropout, BatchNormalization
 from keras.layers import Conv2D, MaxPooling2D
-from keras.datasets import cifar10
 from keras import regularizers
-from keras.callbacks import LearningRateScheduler
-import numpy as np
-import pandas as pd
-from keras.preprocessing.image import ImageDataGenerator
 from sklearn.ensemble import RandomForestRegressor
+from keras.layers import Dense, Activation, Flatten, Dropout, BatchNormalization
 
 
 def _get_fitted_random_model(trainX, trainy):
@@ -196,7 +183,7 @@ def _create_random_cifar_model(input_shape):
     weight_decay = 1e-4
     num_classes = 10
     model = Sequential()
-    model.add(Conv2D(32, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay), 
+    model.add(Conv2D(32, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay),
                      input_shape=input_shape))
     model.add(Activation('elu'))
     model.add(BatchNormalization())
@@ -232,19 +219,19 @@ def _create_random_cifar_model(input_shape):
 def _get_random_model(batch_size=32):
     opt_rms = keras.optimizers.rmsprop(lr=0.001, decay=1e-6)
     datagen = ImageDataGenerator(rotation_range=90,
-                 width_shift_range=0.1, height_shift_range=0.1,
-                 horizontal_flip=True)
+                                 width_shift_range=0.1, height_shift_range=0.1, horizontal_flip=True)
     x_train, y_train, x_val, y_val, x_test, y_test = _load_cifar_dataset()
     model = _create_random_cifar_model(input_shape=x_train.shape[1:])
     datagen.fit(x_train)
     model.compile(loss='categorical_crossentropy', optimizer=opt_rms, metrics=['accuracy'])
-    model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size), \
-                    steps_per_epoch=x_train.shape[0] // batch_size, epochs=1, \
-                    verbose=1, validation_data=(x_test, y_test))
+    model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
+                        steps_per_epoch=x_train.shape[0] // batch_size, epochs=1,
+                        verbose=1, validation_data=(x_test, y_test))
 
     tb = datagen.flow(x_val, y_val, batch_size=batch_size)
     vb = datagen.flow(x_test, y_test, batch_size=batch_size)
     return model, tb, vb
+
 
 def test_cifar10():
     model1, tb1, vb1 = _get_random_model()
@@ -252,16 +239,13 @@ def test_cifar10():
     model3, tb3, vb3 = _get_random_model()
 
     member1 = Member(name="model1", keras_model=model1,
-                 train_batches=tb1,
-                 val_batches =vb1)
+                     train_batches=tb1, val_batches=vb1)
 
     member2 = Member(name="model2", keras_model=model2,
-                 train_batches=tb2,
-                 val_batches=vb2)
+                     train_batches=tb2, val_batches=vb2)
 
     member3 = Member(name="model3", keras_model=model3,
-                 train_batches=tb3,
-                 val_batches=vb3)
+                     train_batches=tb3, val_batches=vb3)
 
     stack = StackEnsemble()
     stack.model = RandomForestRegressor(verbose=1, n_estimators=1000, max_depth=7, n_jobs=4)
