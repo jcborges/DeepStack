@@ -74,7 +74,6 @@ class CustomIterator:
         X_batch = np.array(self.X_data[self.batch_size * self.counter:self.batch_size * (self.counter + 1)])
         y_batch = np.array(self.y_data[self.batch_size * self.counter:self.batch_size * (self.counter + 1)])
         self.counter += 1
-        # out = np.array([[0, 1] if x == 1 else [1, 0] for x in y_batch])
         return X_batch, y_batch
 
     def reset(self):
