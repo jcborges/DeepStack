@@ -216,7 +216,7 @@ def _create_random_cifar_model(input_shape):
     return model
 
 
-def _get_random_model(batch_size=32):
+def _get_random_cifar_model(batch_size=32):
     opt_rms = keras.optimizers.rmsprop(lr=0.001, decay=1e-6)
     datagen = ImageDataGenerator(rotation_range=90,
                                  width_shift_range=0.1, height_shift_range=0.1, horizontal_flip=True)
@@ -234,9 +234,9 @@ def _get_random_model(batch_size=32):
 
 
 def test_cifar10():
-    model1, tb1, vb1 = _get_random_model()
-    model2, tb2, vb2 = _get_random_model()
-    model3, tb3, vb3 = _get_random_model()
+    model1, tb1, vb1 = _get_random_cifar_model()
+    model2, tb2, vb2 = _get_random_cifar_model()
+    model3, tb3, vb3 = _get_random_cifar_model()
 
     member1 = Member(name="model1", keras_model=model1,
                      train_batches=tb1, val_batches=vb1)
