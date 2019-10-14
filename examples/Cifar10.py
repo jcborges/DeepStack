@@ -19,6 +19,7 @@ def load_sample_cifar_dataset(trainsample=5000, testsample=500):
     For validation and testing it creates a fixed sample.
     The rationale is to train algorithms on different training sets but validate and test on the same dataset in order
     to guarantee comparability.
+    
     Args:
         trainsample: site of training set
         testsample: size of validation / test set
@@ -37,7 +38,8 @@ def load_sample_cifar_dataset(trainsample=5000, testsample=500):
 def create_random_cnn(input_shape):
     """
     Creates a CNN, based on random layer size.
-    Idea is to generate similar CNN models per function call
+    Idea is to generate similar CNN models per function call.
+    
     Args:
         input_shape: the input_shape of the model
 
@@ -82,6 +84,7 @@ def create_random_cnn(input_shape):
 def get_random_cifar_model(batch_size=32, epochs=100):
     """
     Creates and fits a (random) CNN on the CIFAR10 dataset.
+    
     Args:
         batch_size: the batch size for training the CNN model
         epochs: epochs to train the model
@@ -106,7 +109,8 @@ def get_random_cifar_model(batch_size=32, epochs=100):
 
 def cifar10_example(nmembers=4):
     """
-    Runs 2 DeepStack Ensemble Models for the Cifar Dataset
+    Runs 2 DeepStack Ensemble Models for the Cifar Dataset.
+    
     Args:
         nmembers: amount of ensemble members to be generated
 
