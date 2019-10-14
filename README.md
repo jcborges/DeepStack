@@ -10,7 +10,7 @@ DeepStack is a Python module for building Deep Learning Ensembles built on top o
 
 ## Installation
 ```
-pip install git+https://github.com/jcborges/DeepStack
+pip install deepstack
 ```
 
 ## Stacking
@@ -23,8 +23,8 @@ DeepStack offers an interface to fit the Meta-Learner on the predictions of the 
 #### Usage 
 
 ```python
-from deepstack import Member
-from deepstack import StackEnsemble
+from deepstack.base import KerasMember
+from deepstack.ensemble import StackEnsemble
 
 model1 = ...  # A Keras pre-trained Model (Base-Learner)
 train_batches1 =  ...  # A Keras Data Iterator - Training Data for Meta-Learner
