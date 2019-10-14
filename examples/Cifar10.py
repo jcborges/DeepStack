@@ -15,7 +15,7 @@ from keras.layers import Dense, Activation, Flatten, Dropout, BatchNormalization
 
 def load_sample_cifar_dataset(trainsample=5000, testsample=500):
     """
-    Loads a sample of cifar dataset. For training it creates a random sampling.
+    Loads a sample of CIFAR-10 dataset. For training it creates a random sampling.
     For validation and testing it creates a fixed sample.
     The rationale is to train algorithms on different training sets but validate and test on the same dataset in order
     to guarantee comparability.
@@ -39,7 +39,7 @@ def create_random_cnn(input_shape):
     """
     Creates a CNN, based on random layer size.
     Idea is to generate similar CNN models per function call.
-    
+
     Args:
         input_shape: the input_shape of the model
 
@@ -83,13 +83,13 @@ def create_random_cnn(input_shape):
 
 def get_random_cifar_model(batch_size=32, epochs=100):
     """
-    Creates and fits a (random) CNN on the CIFAR10 dataset.
-    
+    Creates and fits a (random) CNN on the CIFAR-10 dataset.
+
     Args:
         batch_size: the batch size for training the CNN model
         epochs: epochs to train the model
 
-    Returns: fitted CNN model for the Cifar10 dataset, validation batches and test batches
+    Returns: fitted CNN model for the CIFAR-10 dataset, validation batches and test batches
     """
     opt_rms = keras.optimizers.rmsprop(lr=0.001, decay=1e-6)
     datagen = ImageDataGenerator(rotation_range=90,
@@ -109,12 +109,12 @@ def get_random_cifar_model(batch_size=32, epochs=100):
 
 def cifar10_example(nmembers=4):
     """
-    Runs 2 DeepStack Ensemble Models for the Cifar Dataset.
-    
+    Runs 2 DeepStack Ensemble Models for the CIFAR-10 Dataset.
+
     Args:
         nmembers: amount of ensemble members to be generated
 
-    Returns: an instance of StackEnsemble and DirichletEnsemble for the Cifar10 dataset
+    Returns: an instance of StackEnsemble and DirichletEnsemble for the CIFAR-10 dataset
     """
     stack = StackEnsemble()
     stack.model = RandomForestRegressor(verbose=1, n_estimators=300 * nmembers,
@@ -122,7 +122,7 @@ def cifar10_example(nmembers=4):
     dirichletEnsemble = DirichletEnsemble(N=2000 * nmembers)
 
     for i in range(nmembers):
-        # Creates a Random CNN Keras Model for Cifar10 Dataset
+        # Creates a Random CNN Keras Model for CIFAR-10 Dataset
         model, training_batch, validation_batch = get_random_cifar_model()
         """
         Rationale: The Validation and Testing dataset of a base-learner is the Training
