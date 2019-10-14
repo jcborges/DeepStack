@@ -99,7 +99,6 @@ def get_random_cifar_model(batch_size=32, epochs=100):
     model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
                         steps_per_epoch=x_train.shape[0] // batch_size, epochs=epochs,
                         verbose=0, validation_data=(x_val, y_val), callbacks=[es_callback])
-
     validation_batches = datagen.flow(x_val, y_val, batch_size=batch_size)
     test_batches = datagen.flow(x_test, y_test, batch_size=batch_size)
     return model, validation_batches, test_batches
@@ -116,7 +115,6 @@ def cifar10_example(nmembers=4):
     stack = StackEnsemble()
     stack.model = RandomForestRegressor(verbose=1, n_estimators=300 * nmembers,
                                         max_depth=nmembers * 2, n_jobs=4)  # Meta-Learner
-
     dirichletEnsemble = DirichletEnsemble(N=2000 * nmembers)
 
     for i in range(nmembers):
@@ -131,10 +129,8 @@ def cifar10_example(nmembers=4):
                         val_batches=validation_batch)  # Base-Learners
         stack.add_member(member)  # Adds base-learner to Stack Ensemble
         dirichletEnsemble.add_member(member)  # Adds base-learner to Dirichlet Ensemble
-
     stack.fit()
     dirichletEnsemble.fit()
-
     return stack, dirichletEnsemble
 
 
@@ -142,8 +138,8 @@ def cifar10_example(nmembers=4):
 stack, dirichletEnsemble = cifar10_example()
 
 stack.describe()
-# Expected Output:
 """
+Possible similar Output:
 model1 - AUC: 0.8044
 model2 - AUC: 0.8439
 model3 - AUC: 0.8218
@@ -152,8 +148,8 @@ StackEnsemble AUC: 0.8727
 """
 
 dirichletEnsemble.describe()
-# Expected Output:
 """
+Possible similar Output:
 model1 - Weight: 0.1055 - AUC: 0.8044
 model2 - Weight: 0.2882 - AUC: 0.8439
 model3 - Weight: 0.2127 - AUC: 0.8218
