@@ -8,7 +8,7 @@ def setup_package():
                     packages=['deepstack'],
                     maintainer='Julio Borges',
                     long_description='DeepStack: Ensembling Keras Deep Learning Models into the next Performance Level',
-                    long_description_content_type='text/markdown',
+                    long_description_content_type='text/x-rst',
                     description='DeepStack: Ensembling Keras Deep Learning Models into the next Performance Level',
                     license='MIT',
                     url='https://github.com/jcborges/DeepStack',
