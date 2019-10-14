@@ -31,7 +31,7 @@ def _get_fitted_random_model(trainX, trainy):
     model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy', optimizer='adam', 
                   metrics=['accuracy'])
-    model.fit(trainX, trainy, epochs=50, verbose=0)
+    model.fit(trainX, trainy, epochs=50, verbose=1)
     return model
 
 
