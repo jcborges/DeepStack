@@ -1,8 +1,5 @@
 from distutils.core import setup
 
-with open("README.md", "r") as fh:
-    LONG_DESCRIPTION = fh.read()
-
 def setup_package():
     metadata = dict(name='deepstack',
                     packages=['deepstack'],
