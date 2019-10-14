@@ -43,7 +43,7 @@ stack.fit()  # Fits meta-learner based on training batches from its members (bas
 stack.describe()  # Prints information about ensemble performance based on validation data
 ```
 
-Check running examples on CIFAR-10 dataset: [Cifar10.py](./examples/Cifar10.py).
+Check an example on the CIFAR-10 dataset: [Cifar10.py](./examples/Cifar10.py).
 
 ## Randomized Weighted Ensemble
 Ensemble Technique that weights the prediction of each ensemble member, combining the weights to calculate a combined prediction.  Weight optimization search is performed with randomized search based on the dirichlet distribution on a validation dataset. 
