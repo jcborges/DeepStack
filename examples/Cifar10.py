@@ -138,25 +138,26 @@ def cifar10_example(nmembers=4):
     return stack, dirichletEnsemble
 
 
-# Run Examples
-stack, dirichletEnsemble = cifar10_example()
+if __name__ == "__main__":
+    # Run Examples
+    stack, dirichletEnsemble = cifar10_example()
 
-stack.describe()
-"""
-Possible similar Output:
-model1 - AUC: 0.8044
-model2 - AUC: 0.8439
-model3 - AUC: 0.8218
-model4 - AUC: 0.8487
-StackEnsemble AUC: 0.8727
-"""
+    stack.describe()
+    """
+    Possible similar Output:
+    model1 - AUC: 0.8044
+    model2 - AUC: 0.8439
+    model3 - AUC: 0.8218
+    model4 - AUC: 0.8487
+    StackEnsemble AUC: 0.8727
+    """
 
-dirichletEnsemble.describe()
-"""
-Possible similar Output:
-model1 - Weight: 0.1055 - AUC: 0.8044
-model2 - Weight: 0.2882 - AUC: 0.8439
-model3 - Weight: 0.2127 - AUC: 0.8218
-model4 - Weight: 0.3936 - AUC: 0.8487
-DirichletEnsemble AUC: 0.8821
-"""
+    dirichletEnsemble.describe()
+    """
+    Possible similar Output:
+    model1 - Weight: 0.1055 - AUC: 0.8044
+    model2 - Weight: 0.2882 - AUC: 0.8439
+    model3 - Weight: 0.2127 - AUC: 0.8218
+    model4 - Weight: 0.3936 - AUC: 0.8487
+    DirichletEnsemble AUC: 0.8821
+    """

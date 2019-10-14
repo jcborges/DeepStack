@@ -5,6 +5,7 @@ with open("README.md", "r") as fh:
 
 def setup_package():
     metadata = dict(name='deepstack',
+                    packages=['deepstack'],
                     maintainer='Julio Borges',
                     long_description=LONG_DESCRIPTION,
                     long_description_content_type='text/markdown',
