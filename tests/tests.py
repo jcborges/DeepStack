@@ -1,8 +1,8 @@
 import sys
 sys.path.append(".")
-sys.path.append("..")
-sys.path.append("../deepstack/")
-from deepstack.base import Member
+import os
+os.environ['KERAS_BACKEND']="tensorflow"
+from deepstack.base import KerasMember
 from deepstack.ensemble import DirichletEnsemble
 from deepstack.ensemble import StackEnsemble
 from sklearn.datasets.samples_generator import make_blobs
@@ -31,7 +31,7 @@ def _get_fitted_random_model(trainX, trainy):
     model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy', optimizer='adam', 
                   metrics=['accuracy'])
-    model.fit(trainX, trainy, epochs=50, verbose=0)
+    model.fit(trainX, trainy, epochs=50, verbose=1)
     return model
 
 
@@ -51,8 +51,8 @@ def test_dirichletensemble():
         model = _get_fitted_random_model(trainX, trainy)
         train_batches = CustomIterator(trainX, trainy, 32)
         val_batches = CustomIterator(testX, testy, 32)
-        m = Member(keras_model=model, name="Model " + str(i), 
-                   train_batches=train_batches, val_batches=val_batches)
+        m = KerasMember(keras_model=model, name="Model " + str(i),
+                        train_batches=train_batches, val_batches=val_batches)
         stack.add_member(m)
     stack.fit()
     stack.describe()
@@ -120,8 +120,8 @@ def test_stackensemble():
         validation_steps=val_batches1.n // 32,
         epochs=10
     )
-    member1 = Member(keras_model=model1, train_batches=val_batches1, 
-                     val_batches=test_batches1, name="Model1")
+    member1 = KerasMember(keras_model=model1, train_batches=val_batches1,
+                          val_batches=test_batches1, name="Model1")
 
     model2 = Sequential()
     model2.add(Dense(15, input_dim=60, activation='relu'))
@@ -139,8 +139,8 @@ def test_stackensemble():
         validation_steps=val_batches2.n // 32,
         epochs=10
     )
-    member2 = Member(keras_model=model2, train_batches=val_batches2,
-                     val_batches=test_batches2, name="Model2")
+    member2 = KerasMember(keras_model=model2, train_batches=val_batches2,
+                          val_batches=test_batches2, name="Model2")
 
     if not os.path.exists("./premodels/"):
         os.mkdir("./premodels/")
@@ -247,7 +247,7 @@ def _get_random_cifar_model(batch_size=32):
                   metrics=['accuracy'])
     model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
                         steps_per_epoch=x_train.shape[0] // batch_size,
-                        epochs=1, verbose=0, validation_data=(x_test, y_test))
+                        epochs=1, verbose=1, validation_data=(x_test, y_test))
 
     tb = datagen.flow(x_val, y_val, batch_size=batch_size)
     vb = datagen.flow(x_test, y_test, batch_size=batch_size)
@@ -259,17 +259,17 @@ def test_cifar10():
     model2, tb2, vb2 = _get_random_cifar_model()
     model3, tb3, vb3 = _get_random_cifar_model()
 
-    member1 = Member(name="model1", keras_model=model1,
-                     train_batches=tb1, val_batches=vb1)
+    member1 = KerasMember(name="model1", keras_model=model1,
+                          train_batches=tb1, val_batches=vb1)
 
-    member2 = Member(name="model2", keras_model=model2,
-                     train_batches=tb2, val_batches=vb2)
+    member2 = KerasMember(name="model2", keras_model=model2,
+                          train_batches=tb2, val_batches=vb2)
 
-    member3 = Member(name="model3", keras_model=model3,
-                     train_batches=tb3, val_batches=vb3)
+    member3 = KerasMember(name="model3", keras_model=model3,
+                          train_batches=tb3, val_batches=vb3)
 
     stack = StackEnsemble()
-    stack.model = RandomForestRegressor(verbose=0, n_estimators=3000,
+    stack.model = RandomForestRegressor(verbose=1, n_estimators=3000,
                                         max_depth=3, n_jobs=4)
     stack.add_member(member1)
     stack.add_member(member2)

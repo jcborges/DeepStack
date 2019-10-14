@@ -294,19 +294,16 @@ class StackEnsemble(Ensemble):
         assert(len(list(names)) == len(set(names)))
         return True
 
-    def save(self, folder="./premodels/", save_kerasmodel=False):
+    def save(self, folder="./premodels/"):
         """
         Saves meta-learner and base-learner of ensemble into folder / directory
         Args:
             folder: the folder where models should be saved to.
                 Create if not exists.
-            save_kerasmodel: if members / base-learners should save the 
-                keras model as part of object.
         """
         if not os.path.exists(folder):
             os.mkdir(folder)
-        [member.save(folder=folder, save_kerasmodel=save_kerasmodel)
-            for member in self.members]
+        [member.save(folder=folder) for member in self.members]
         temp = self.members
         # Reset base-learners. These are loaded idependently
         self.members = None
