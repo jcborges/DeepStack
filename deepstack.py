@@ -256,7 +256,7 @@ class DirichletEnsemble(Ensemble):
             auc = metrics.roc_auc_score(member.val_classes, member.val_probs)
             text = self.members[i].name + " - Weight: {:1.4f} - AUC: {:1.4f}".format(self.bestweights[i], auc)
             print(text)
-        print("DirichletEnsemble AUC:", self.bestauc)
+        print("DirichletEnsemble AUC: {:1.4f}".format(self.bestauc))
         return
 
 
@@ -362,7 +362,7 @@ class StackEnsemble(Ensemble):
             text = member.name + " - AUC: {:1.4f}".format(auc)
             print(text)
         auc = metrics.roc_auc_score(val_classes, probabilities_val)
-        print("StackEnsemble AUC:", auc)
+        print("StackEnsemble AUC: {:1.4f}".format(auc))
         return auc
 
     def _get_X(self, attrname):
