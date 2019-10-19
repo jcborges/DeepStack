@@ -1,11 +1,11 @@
 # DeepStack
 
-DeepStack: Ensembling Keras Deep Learning Models into the next Performance Level
+DeepStack: Ensembling Deep Learning Models into the next Performance Level
 
 [![Travis](https://travis-ci.com/jcborges/DeepStack.svg?branch=master)](https://travis-ci.com/jcborges/DeepStack)
 ---
 
-DeepStack is a Python module for building Deep Learning Ensembles built on top of Keras and distributed under the MIT license.
+DeepStack is a Python module for building Deep Learning Ensembles built originally on top of Keras and distributed under the MIT license.
 
 
 ## Installation
@@ -14,8 +14,9 @@ pip install deepstack
 ```
 
 ## Stacking
-Stacking is based on training a Meta-Learner on top of Keras pre-trained Base-Learners.
-DeepStack offers an interface to fit the Meta-Learner on the predictions of the Base-Learners according to following schema:
+Stacking is based on training a Meta-Learner on top of pre-trained Base-Learners.
+DeepStack offers an interface to fit the Meta-Learner on the predictions of the Base-Learners.
+In the following an Example based on top of a pre-trained Keras Models:
 
 ![](./Stacking.png)
 
@@ -23,18 +24,18 @@ DeepStack offers an interface to fit the Meta-Learner on the predictions of the 
 #### Usage 
 
 ```python
-from deepstack.base import KerasMember
+from deepstack.base import KerasMember  # For a generic (i.e., Non-Keras Model) check the class `Member`
 from deepstack.ensemble import StackEnsemble
 
 model1 = ...  # A Keras pre-trained Model (Base-Learner)
 train_batches1 =  ...  # A Keras Data Iterator - Training Data for Meta-Learner
 val_batches1 =  ...  # A Keras Data Iterator - Validation Data for Meta-Learner
-member1 = Member(name="Model1", keras_model=model1, train_batches=train_batches1, val_batches=val_batches1)
+member1 = KerasMember(name="Model1", keras_model=model1, train_batches=train_batches1, val_batches=val_batches1)
 
 model2 = ...  
 train_batches2 =  ...  
 val_batches2 =  ...  
-member2 = Member(name="Model2", keras_model=model2, train_batches=train_batches2, val_batches=val_batches2)
+member2 = KerasMember(name="Model2", keras_model=model2, train_batches=train_batches2, val_batches=val_batches2)
 
 stack = StackEnsemble()
 stack.add_member(member1)  # Assumption: the data iterators of base-learners iterate over the same data and have same shape and classes.

@@ -10,6 +10,7 @@ import os
 import joblib
 import glob
 from deepstack.base import Member
+from keras.utils import to_categorical
 
 
 class Ensemble(object):
@@ -51,8 +52,6 @@ class DirichletEnsemble(Ensemble):
         """
         Constructor of a Keras Ensemble Binary Classifier
         Args:
-            val_classes: classes of validation dataset, from which the ensemble
-                weights will be calculated
             N: the number of times weights should be (randomly) tried out,
                 sampled from a dirichlet distribution
         """
@@ -88,7 +87,7 @@ class DirichletEnsemble(Ensemble):
             rs = np.random.dirichlet(np.ones(self._nmembers), size=1)[0]
             preds = np.sum(np.array([self.members[i].val_probs * rs[i]
                                      for i in range(self._nmembers)]), axis=0)
-            auc = metrics.roc_auc_score(val_classes, preds)
+            auc = _roc_auc_score(val_classes, preds)
             if auc > aucbest:
                 if verbose:
                     print(auc, i, rs)  # TODO: Proper logging
@@ -116,7 +115,7 @@ class DirichletEnsemble(Ensemble):
         """
         for i in range(self._nmembers):
             member = self.members[i]
-            auc = metrics.roc_auc_score(member.val_classes, member.val_probs)
+            auc = _roc_auc_score(member.val_classes, member.val_probs)
             text = self.members[i].name + " - Weight: {:1.4f} - AUC: {:1.4f}".format(self.bestweights[i], auc)
             print(text)
         print("DirichletEnsemble AUC: {:1.4f}".format(self.bestauc))
@@ -226,12 +225,12 @@ class StackEnsemble(Ensemble):
         val_classes = self.members[0].val_classes
         for i in range(self._nmembers):
             member = self.members[i]
-            auc = metrics.roc_auc_score(member.val_classes, member.val_probs)
+            auc = _roc_auc_score(member.val_classes, member.val_probs)
             if auc > modelbestauc:
                 modelbestauc = auc
             text = member.name + " - AUC: {:1.4f}".format(auc)
             print(text)
-        auc = metrics.roc_auc_score(val_classes, probabilities_val)
+        auc = _roc_auc_score(val_classes, probabilities_val)
         print("StackEnsemble AUC: {:1.4f}".format(auc))
         return auc
 
@@ -330,3 +329,11 @@ class StackEnsemble(Ensemble):
             member = Member.load(fn)
             stack.add_member(member)
         return stack
+
+
+def _roc_auc_score(y_true, y_score):
+    try:
+        return metrics.roc_auc_score(y_true, y_score)
+    except ValueError:
+        y_true_cat = to_categorical(y_true)
+        return metrics.roc_auc_score(y_true_cat, y_score)

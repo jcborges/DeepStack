@@ -4,7 +4,6 @@ Module representing the Base-Learners, Members of an Ensemble
 import numpy as np
 import os
 from keras.models import load_model
-import joblib
 
 
 class Member:
@@ -53,9 +52,18 @@ class Member:
         Returns:
             loaded Member object
         """
-        path = os.path.join(folder, "member.joblib")
-        member = joblib.load(path)
-        return member
+        name = folder.split(os.sep)[-1].replace(os.sep, "")
+        train_probs = np.load(os.path.join(folder, "train_probs.npy"))
+        train_classes = np.load(os.path.join(folder, "train_classes.npy"))
+        val_probs = np.load(os.path.join(folder, "val_probs.npy"))
+        val_classes = np.load(os.path.join(folder, "val_classes.npy"))
+        submission_probs = None
+        if os.path.isfile(os.path.join(folder, "submission_probs.npy")):
+            submission_probs = np.load(
+                os.path.join(folder, "submission_probs.npy"))
+        print("Loaded", name)
+        return Member(name, train_probs, train_classes, val_probs,
+                      val_classes, submission_probs)
 
     def save(self, folder="./premodels/"):
         """
@@ -70,7 +78,13 @@ class Member:
             os.mkdir(folder)
         if not os.path.exists(folder + self.name):
             os.mkdir(folder + self.name)
-        joblib.dump(self, os.path.join(folder + self.name, "member.joblib"))
+        np.save(folder + self.name + "/val_probs.npy", self.val_probs)
+        np.save(folder + self.name + "/train_probs.npy", self.train_probs)
+        np.save(folder + self.name + "/val_classes.npy", self.val_classes)
+        np.save(folder + self.name + "/train_classes.npy", self.train_classes)
+        if self.submission_probs is not None:
+            np.save(folder + self.name + "/submission_probs.npy",
+                    self.submission_probs)
 
 
 class KerasMember(Member):

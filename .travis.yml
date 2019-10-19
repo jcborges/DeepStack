@@ -1,9 +1,14 @@
 language: python
 python:
-  - "3.6"
-# command to install dependencies
+- '3.6'
 install:
-  - pip install numpy>=1.16.4 keras>=2.2.5 tensorflow>=1.14.0 scikit-learn>=0.21.2 wget pandas
-  - pip install -e .
-# command to run tests
+- pip install numpy>=1.16.4 keras>=2.2.5 tensorflow>=1.14.0 scikit-learn>=0.21.2 wget
+  pandas
+- pip install -e .
 script: pytest -s -v ./tests/tests.py
+
+deploy:
+  provider: pypi
+  user: jcborges
+  password:
+    secure: F808UcgJ0bgYx9TtW3/hYjPx48ezZRIeY+toJ9i6iv74h8bImWkQD04gIKf5m3/MW6y0PIGEH5JbWWr1jIDA+hRKzkMSrk7Iizr6CyuKb3gqvmH1SDcfbP/oZIaN2P2XjDgtnOIO0W3chCme4jc6SuotiVhz9/XxeBpEqKcyiNYBc1z49V/HJr+H/p1NCnDsO8KlJfCK/J8tmxTyceD5Q6ESzPlEBuQYCBIhZPehnF9iethkWcKqVN/tpXY5uN1/16jZc1NBULUG9vz4zCYmQhZi8Vrcdg+jcxjE5m38nAgn87ldABvu1wmovhtdEp29SBWIVv/RIAbWzzapEM/MQmUyhr9qgvuyyXDhfFZVz8QsGRXLFfydJKWTnlW3kgMOFjPLdlAxDaCYNqk+RW070JdxYy2h227MyjsGpVoOUXcxG+f6wOWwYV3yT6zWTGz01yAb2QUsyoASDXM1UtYs+128TAqsMi+l0gNbH86YW+rR0p7KfBMZwfE8eGaEQT8vk7+sEka9IU+zmOWyyBqcs7GeKp0bkrNHu7qc8eusY8j3iB94xelL1m1KNVpF5ish6V5XzC6kWOmB1T+azjnEi+nYmSW902+Afwn54l25cGB2bC396UwnmerTpEsifFXa1MF+k/twWogxabiSYxs+4vlmwYIbOiImJj7MWpt6AAQ=
