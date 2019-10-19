@@ -1,4 +1,8 @@
-from UtilsCifar10 import *
+import UtilsCifar10
+from deepstack.base import KerasMember
+from deepstack.ensemble import DirichletEnsemble
+from deepstack.ensemble import StackEnsemble
+from sklearn.ensemble import RandomForestRegressor
 
 
 def cifar10_example(nmembers=4):
@@ -18,7 +22,7 @@ def cifar10_example(nmembers=4):
 
     for i in range(nmembers):
         # Creates a Random CNN Keras Model for CIFAR-10 Dataset
-        model, training_batch, validation_batch = get_random_cifar_model()
+        model, training_batch, validation_batch = UtilsCifar10.get_random_cifar_model()
         """
         Rationale: The Validation and Testing dataset of a base-learner
         is the Training and Validation Dataset of a Meta-Learner.
