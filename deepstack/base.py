@@ -22,12 +22,12 @@ class Member:
         Returns:
             a Member object
         """
+        self.name = name
         self.train_probs = np.array(train_probs)
         self.train_classes = np.array(train_classes)
         self.val_probs = np.array(val_probs)
         self.val_classes = np.array(val_classes)
         self.submission_probs = np.array(submission_probs)
-        return self
 
     def __repr__(self):
         return "<Member: " + self.name + ">"
@@ -53,6 +53,8 @@ class Member:
             loaded Member object
         """
         name = folder.split(os.sep)[-1].replace(os.sep, "")
+        if folder[-1] == os.sep:
+            name = folder.split(os.sep)[-2].replace(os.sep, "")  
         train_probs = np.load(os.path.join(folder, "train_probs.npy"))
         train_classes = np.load(os.path.join(folder, "train_classes.npy"))
         val_probs = np.load(os.path.join(folder, "val_probs.npy"))
@@ -61,9 +63,10 @@ class Member:
         if os.path.isfile(os.path.join(folder, "submission_probs.npy")):
             submission_probs = np.load(
                 os.path.join(folder, "submission_probs.npy"))
+        member = Member(name, train_probs, train_classes, val_probs,
+                        val_classes, submission_probs)
         print("Loaded", name)
-        return Member(name, train_probs, train_classes, val_probs,
-                      val_classes, submission_probs)
+        return member
 
     def save(self, folder="./premodels/"):
         """

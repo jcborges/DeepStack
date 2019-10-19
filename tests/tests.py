@@ -23,6 +23,7 @@ from keras import regularizers
 from sklearn.ensemble import RandomForestRegressor
 from keras.layers import Dense, Activation, Flatten, Dropout
 from keras.layers import BatchNormalization
+import shutil
 
 
 def _get_fitted_random_model(trainX, trainy):
@@ -180,6 +181,7 @@ def test_stackensemble():
     if platform == "darwin":
         print(auc3, auc4)
         assert(auc3 == auc4)   # TODO: not working under linux
+    shutil.rmtree("./premodels/")
 
 
 def _load_cifar_dataset(trainsample=5000, testsample=500):
