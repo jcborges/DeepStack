@@ -2,7 +2,7 @@
 
 DeepStack: Ensembling Deep Learning Models into the next Performance Level
 
-[![Travis](https://travis-ci.com/jcborges/DeepStack.svg?branch=master)](https://travis-ci.com/jcborges/DeepStack) [![PyPI version](https://badge.fury.io/py/deepstack.svg)](https://badge.fury.io/py/deepstack)
+[![Travis](https://travis-ci.com/jcborges/DeepStack.svg?branch=master)](https://travis-ci.com/jcborges/DeepStack) [![PyPI version](https://badge.fury.io/py/deepstack.svg)](https://badge.fury.io/py/deepstack) [![Download Stats](https://img.shields.io/pypi/dm/deepstack?color=green&logoColor=green)](https://pypistats.org/packages/deepstack)
 ---
 
 DeepStack is a Python module for building Deep Learning Ensembles built originally on top of Keras and distributed under the MIT license.
@@ -16,7 +16,7 @@ pip install deepstack
 ## Stacking
 Stacking is based on training a Meta-Learner on top of pre-trained Base-Learners.
 DeepStack offers an interface to fit the Meta-Learner on the predictions of the Base-Learners.
-In the following an Example based on top of a pre-trained Keras Models:
+In the following an Example based on top of pre-trained Keras Models (there is also an interface for generic models):
 
 ![](./Stacking.png)
 
@@ -49,4 +49,4 @@ Check an example on the CIFAR-10 dataset: [Cifar10.py](./examples/Cifar10.py).
 ## Randomized Weighted Ensemble
 Ensemble Technique that weights the prediction of each ensemble member, combining the weights to calculate a combined prediction.  Weight optimization search is performed with randomized search based on the dirichlet distribution on a validation dataset. 
 
-It follows the same interface of the StackEnsemble. A running example can be found in [Cifar10.py](./examples/Cifar10.py).
+It follows the same interface of the StackEnsemble. An example can be found in [Cifar10.py](./examples/Cifar10.py).
