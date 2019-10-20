@@ -2,7 +2,7 @@
 
 DeepStack: Ensembling Deep Learning Models into the next Performance Level
 
-[![Travis](https://travis-ci.com/jcborges/DeepStack.svg?branch=master)](https://travis-ci.com/jcborges/DeepStack) [![PyPI version](https://badge.fury.io/py/deepstack.svg)](https://badge.fury.io/py/deepstack) [![Download Stats](https://img.shields.io/pypi/dm/deepstack?color=green&logoColor=green)](https://pypistats.org/packages/deepstack)
+[![Travis](https://travis-ci.com/jcborges/DeepStack.svg?branch=master)](https://travis-ci.com/jcborges/DeepStack) [![PyPI version](https://badge.fury.io/py/deepstack.svg)](https://badge.fury.io/py/deepstack) [![Download Stats](https://img.shields.io/pypi/dm/deepstack?color=bright%20green&label=installs&logoColor=bright%20green)](https://pypistats.org/packages/deepstack)
 ---
 
 DeepStack is a Python module for building Deep Learning Ensembles built originally on top of Keras and distributed under the MIT license.
