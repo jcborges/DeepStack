@@ -48,6 +48,7 @@ class DirichletEnsemble(Ensemble):
     validation dataset. The weight optimization search is performed with
     randomized search based on the dirichlet distribution.
     """
+
     def __init__(self, N=10000):
         """
         Constructor of a Keras Ensemble Binary Classifier
@@ -116,7 +117,8 @@ class DirichletEnsemble(Ensemble):
         for i in range(self._nmembers):
             member = self.members[i]
             auc = _roc_auc_score(member.val_classes, member.val_probs)
-            text = self.members[i].name + " - Weight: {:1.4f} - AUC: {:1.4f}".format(self.bestweights[i], auc)
+            text = self.members[i].name + \
+                " - Weight: {:1.4f} - AUC: {:1.4f}".format(self.bestweights[i], auc)
             print(text)
         print("DirichletEnsemble AUC: {:1.4f}".format(self.bestauc))
         return
@@ -148,7 +150,8 @@ class StackEnsemble(Ensemble):
 
     def __str__(self):
         reps = [member.name for member in self.members]
-        return "StackEnsemble: with" + str(self._nmembers) + " Base-Learners [" + ", ".join(reps) + "]"
+        return "StackEnsemble: with" + \
+            str(self._nmembers) + " Base-Learners [" + ", ".join(reps) + "]"
 
     def add_member(self, member):
         """

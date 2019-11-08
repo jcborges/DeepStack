@@ -54,7 +54,7 @@ class Member:
         """
         name = folder.split(os.sep)[-1].replace(os.sep, "")
         if folder[-1] == os.sep:
-            name = folder.split(os.sep)[-2].replace(os.sep, "")  
+            name = folder.split(os.sep)[-2].replace(os.sep, "")
         train_probs = np.load(os.path.join(folder, "train_probs.npy"))
         train_classes = np.load(os.path.join(folder, "train_classes.npy"))
         val_probs = np.load(os.path.join(folder, "val_probs.npy"))
@@ -94,6 +94,7 @@ class KerasMember(Member):
     """
     Representation of a single keras model member (Base-Learner) of an Ensemble
     """
+
     def __init__(self, name=None, keras_model=None, train_batches=None,
                  val_batches=None, submission_probs=None, keras_modelpath=None,
                  keras_kwargs={}):
