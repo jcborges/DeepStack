@@ -48,25 +48,42 @@ class DirichletEnsemble(Ensemble):
     validation dataset. The weight optimization search is performed with
     randomized search based on the dirichlet distribution.
     """
-    def __init__(self, N=10000):
+
+    def __init__(self, N=10000, metric=None, maximize=True):
         """
-        Constructor of a Keras Ensemble Binary Classifier
+        Constructor of a Dirichlet Weighted Ensemble
         Args:
             N: the number of times weights should be (randomly) tried out,
                 sampled from a dirichlet distribution
+            metric: (optional) evaluation metric function.
+                Default: `sklearn.metrics.roc_auc_score`
+            maximize: if evaluation metric should be maximized (otherwise minimized)
         """
         self.n = N
+        self.metric = metric
+        if metric is None:
+            self.metric = metrics.roc_auc_score
+        self.maximize = maximize
         # Initialize Parameters:
         self.members = []
         self.bestweights = []
         self.probabilities = None
         self._nmembers = 0
-        self.bestauc = 0
+        self.bestscore = float("-inf") if maximize else float("inf")
         self.fitted = False
+
+    def add_members(self, members):
+        """
+        Adds Members to the Ensemble
+        Args:
+            members: a list containing instances of class `Member`
+        """
+        for member in members:
+            self.add_member(member)
 
     def add_member(self, member):
         """
-        Adds a ensemble Member (Base-Learner) to the Stack
+        Adds a Member (Base-Learner) to the Ensemble
         Args:
             member: an instance of class `Member`
         """
@@ -81,20 +98,22 @@ class DirichletEnsemble(Ensemble):
         assert(len(self.members) > 1)
         val_classes = self.members[0].val_classes
 
-        aucbest = 0
+        best_ensemble_score = float("-inf") if self.maximize else float("inf")
         rsbest = None
         for i in range(self.n):
             rs = np.random.dirichlet(np.ones(self._nmembers), size=1)[0]
             preds = np.sum(np.array([self.members[i].val_probs * rs[i]
                                      for i in range(self._nmembers)]), axis=0)
-            auc = _roc_auc_score(val_classes, preds)
-            if auc > aucbest:
+            ensemble_score = _calculate_metric(val_classes, preds, self.metric)
+            max_flag = self.maximize and ensemble_score > best_ensemble_score
+            min_flag = not(self.maximize) and ensemble_score < best_ensemble_score
+            if max_flag or min_flag:
                 if verbose:
-                    print(auc, i, rs)  # TODO: Proper logging
-                aucbest = auc
+                    print(ensemble_score, i, rs)  # TODO: Proper logging
+                best_ensemble_score = ensemble_score
                 rsbest = rs
         self.bestweights = rsbest
-        self.bestauc = aucbest
+        self.bestscore = best_ensemble_score
 
     def predict(self):
         """
@@ -115,10 +134,18 @@ class DirichletEnsemble(Ensemble):
         """
         for i in range(self._nmembers):
             member = self.members[i]
-            auc = _roc_auc_score(member.val_classes, member.val_probs)
-            text = self.members[i].name + " - Weight: {:1.4f} - AUC: {:1.4f}".format(self.bestweights[i], auc)
+            model_score = _calculate_metric(member.val_classes,
+                                            member.val_probs,
+                                            metric=self.metric)
+            text = self.members[i].name + \
+                " - Weight: {:1.4f} - {}: {:1.4f}".format(
+                    self.bestweights[i],
+                    self.metric.__name__,
+                    model_score)
             print(text)
-        print("DirichletEnsemble AUC: {:1.4f}".format(self.bestauc))
+        print("DirichletEnsemble {}: {:1.4f}".format(
+            self.metric.__name__,
+            self.bestscore))
         return
 
 
@@ -126,17 +153,13 @@ class StackEnsemble(Ensemble):
     def __init__(self, model=None):
         """
         Constructor of a Stacking Ensemble.
-        Per default, it constructs a meta-learner that predicts the
-        probability of the positive class as a regression problem.
         Args:
             model: ensemble model which should serve as meta-model.
-                Sklearn RandomForestRegressor per default.
+                `sklearn.ensemble.RandomForestRegressor` per default for prediction class probabilities.
         """
+        self.model = model
         if model is None:
-            self.model = RandomForestRegressor(verbose=1,
-                                               n_estimators=100, max_depth=3)
-        else:
-            self.model = model
+            self.model = RandomForestRegressor(n_estimators=100, max_depth=3, n_jobs=20)
         # Initialize Parameters:
         self.members = []
         self._nmembers = 0
@@ -148,7 +171,18 @@ class StackEnsemble(Ensemble):
 
     def __str__(self):
         reps = [member.name for member in self.members]
-        return "StackEnsemble: with" + str(self._nmembers) + " Base-Learners [" + ", ".join(reps) + "]"
+        return "StackEnsemble: with" + \
+            str(self._nmembers) + " Base-Learners [" + ", ".join(reps) + "]"
+
+    def add_members(self, members):
+        """
+        Adds ensemble Members to the Stack
+        Args:
+            members: a list containing instances of class `Member`
+        """
+        for member in members:
+            self.add_member(member)
+        self._test()
 
     def add_member(self, member):
         """
@@ -210,29 +244,39 @@ class StackEnsemble(Ensemble):
             raise("Model has no predict function")
         return np.array(self.predictions)
 
-    def describe(self, probabilities_val=None):
+    def describe(self, probabilities_val=None, metric=None,
+                 maximize=True):
         """
         Prints information about the performance of base and meta learners
         based on validation data.
         Args:
             probabilities_val: (optional) probabilities/prediction on
                 validation data
+            metric: (optional) evaluation metric function.
+                Default: `sklearn.metrics.roc_auc_score`
+            maximize: if metric should be maximized (otherwise minimized)
         """
-        modelbestauc = 0
+        best_score = float("-inf") if maximize else float("inf")
+        if metric is None:
+            metric = metrics.roc_auc_score
         if probabilities_val is None:
             probabilities_val = self._predict_val()
         # Assumption: all members have same val_classes
         val_classes = self.members[0].val_classes
         for i in range(self._nmembers):
             member = self.members[i]
-            auc = _roc_auc_score(member.val_classes, member.val_probs)
-            if auc > modelbestauc:
-                modelbestauc = auc
-            text = member.name + " - AUC: {:1.4f}".format(auc)
+            model_score = _calculate_metric(member.val_classes, member.val_probs, metric)
+            max_flag = maximize and model_score > best_score
+            min_flag = not(maximize) and model_score < best_score
+            if max_flag or min_flag:
+                best_score = model_score
+            text = member.name + " - {}: {:1.4f}".format(
+                metric.__name__, model_score)
             print(text)
-        auc = _roc_auc_score(val_classes, probabilities_val)
-        print("StackEnsemble AUC: {:1.4f}".format(auc))
-        return auc
+        ensemble_score = _calculate_metric(val_classes, probabilities_val, metric)
+        print("StackEnsemble {}: {:1.4f}".format(
+            metric.__name__, ensemble_score))
+        return ensemble_score
 
     def _get_X(self, attrname):
         X = []
@@ -331,9 +375,22 @@ class StackEnsemble(Ensemble):
         return stack
 
 
-def _roc_auc_score(y_true, y_score):
+def _calculate_metric(y_true, y_pred, metric=None):  # TODO: Refactor
+    if metric is None:
+        metric = metrics.roc_auc_score
     try:
-        return metrics.roc_auc_score(y_true, y_score)
+        return metric(y_true, y_pred)
     except ValueError:
-        y_true_cat = to_categorical(y_true)
-        return metrics.roc_auc_score(y_true_cat, y_score)
+        pass
+
+    y_true_cat = to_categorical(y_true)
+    try:
+        return metrics.roc_auc_score(y_true_cat, y_pred)
+    except ValueError:
+        pass
+
+    # Classification Task
+    y_t = np.argmax(y_true, axis=1)
+    y_p = np.argmax(y_pred, axis=1)
+
+    return metric(y_t, y_p)
