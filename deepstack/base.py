@@ -105,11 +105,13 @@ class KerasMember(Member):
             name: name of the model. Must be unique.
             model: the (pre-trained) keras model.
                 Or provide `keras_modelpath` instead.
-            train_batches: an instance of Keras `DataGenerator` for training
-                the Meta-Learner
-            val_batches: an instance of Keras `DataGenerator` for validating
-                the Meta-Learner
-            submission_probs: the submission prediction probabilities
+            train_batches: training data for the Meta-Learner.
+                Either a Keras `DataGenerator` or a tuple
+                with training set (X, y).
+            val_batches: validation data for the Meta-Learner.
+                Either a Keras `DataGenerator` or a tuple
+                with validation set (X, y).
+            submission_probs: the final submission prediction probabilities
             keras_modelpath: path to load keras model from (if `model`
                 argument is None)
             keras_kwargs: kwargs for keras `load_model` (if `model` argument
@@ -126,36 +128,47 @@ class KerasMember(Member):
         self.train_classes = None
         if (keras_model is None) and (keras_modelpath is not None):
             self.load_kerasmodel(self.keras_modelpath, self.keras_kwargs)
-        if val_batches is not None:
-            self._calculate_val_predictions(val_batches)
         if train_batches is not None:
             self._calculate_train_predictions(train_batches)
+        if val_batches is not None:
+            self._calculate_val_predictions(val_batches)
+
+    def _test_datatuple(self, datatuple):
+        assert(len(datatuple) == 2)
+        assert(datatuple[0].shape[0] == datatuple[1].shape[0])
 
     def _calculate_predictions(self, batches):
         if hasattr(batches, 'shuffle'):
             batches.reset()
             batches.shuffle = False
+        if type(batches) is tuple:
+            self._test_datatuple(batches)
+            return self.model.predict(batches[0])
         return self.model.predict_generator(
             batches, steps=(batches.n // batches.batch_size) + 1, verbose=1)
 
     def _calculate_val_predictions(self, val_batches):
-        self.val_probs = self._calculate_predictions(val_batches)
-        if hasattr(val_batches, 'classes'):
+        if type(val_batches) is tuple:
+            self.val_classes = val_batches[1]
+        elif hasattr(val_batches, 'classes'):
             self.val_classes = np.array(val_batches.classes)
         elif hasattr(val_batches, 'y'):
             self.val_classes = np.array(val_batches.y)
         else:
-            raise("No known class in data batch")
+            raise ValueError("No known class in data batch")
+        self.val_probs = self._calculate_predictions(val_batches)
         return self.val_probs
 
     def _calculate_train_predictions(self, train_batches):
-        self.train_probs = self._calculate_predictions(train_batches)
-        if hasattr(train_batches, 'classes'):
+        if type(train_batches) is tuple:
+            self.train_classes = train_batches[1]
+        elif hasattr(train_batches, 'classes'):
             self.train_classes = np.array(train_batches.classes)
         elif hasattr(train_batches, 'y'):
             self.train_classes = np.array(train_batches.y)
         else:
-            raise("No known class in data batch")
+            raise ValueError("No known class in data batch")
+        self.train_probs = self._calculate_predictions(train_batches)
         return self.train_probs
 
     def load_kerasmodel(self, keras_modelpath=None, keras_kwargs={}):
