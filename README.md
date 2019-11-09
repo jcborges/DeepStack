@@ -47,6 +47,9 @@ stack.describe()  # Prints information about ensemble performance based on valid
 Check an example on the CIFAR-10 dataset: [Cifar10.py](./examples/Cifar10.py).
 
 ## Randomized Weighted Ensemble
+
 Ensemble Technique that weights the prediction of each ensemble member, combining the weights to calculate a combined prediction.  Weight optimization search is performed with randomized search based on the dirichlet distribution on a validation dataset. 
+
+![](./WeightedEnsemble.png)
 
 It follows the same interface of the StackEnsemble. An example can be found in [Cifar10.py](./examples/Cifar10.py).
