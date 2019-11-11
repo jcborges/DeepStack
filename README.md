@@ -28,8 +28,8 @@ from deepstack.base import KerasMember  # For a generic (i.e., Non-Keras Model) 
 from deepstack.ensemble import StackEnsemble
 
 model1 = ...  # A Keras pre-trained Model (Base-Learner)
-train_batches1 =  ...  # A Keras Data Iterator - Training Data for Meta-Learner
-val_batches1 =  ...  # A Keras Data Iterator - Validation Data for Meta-Learner
+train_batches1 =  ...  # A numpy tuple (X_train, y_train) or Keras Data Iterator - Training Data for Meta-Learner
+val_batches1 =  ...  # A numpy tuple (X_val, y_val) or Keras Data Iterator - Validation Data for Meta-Learner
 member1 = KerasMember(name="Model1", keras_model=model1, train_batches=train_batches1, val_batches=val_batches1)
 
 model2 = ...  
