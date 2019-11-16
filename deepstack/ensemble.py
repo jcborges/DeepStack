@@ -6,6 +6,7 @@ from sklearn import metrics
 import warnings
 from abc import abstractmethod
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.base import is_classifier, is_regressor
 import os
 import joblib
 import glob
@@ -155,7 +156,8 @@ class StackEnsemble(Ensemble):
         Constructor of a Stacking Ensemble.
         Args:
             model: ensemble model which should serve as meta-model.
-                `sklearn.ensemble.RandomForestRegressor` per default for prediction class probabilities.
+                `sklearn.ensemble.RandomForestRegressor` per default for predicting class probabilities.
+            members (list): ensemble Members to add to the Stack
         """
         self.model = model
         if model is None:
@@ -164,6 +166,7 @@ class StackEnsemble(Ensemble):
         self.members = []
         self._nmembers = 0
         self.predictions = None
+        self._y_squeezed = False  # Flags if labels dimension must be squeezed
 
     def __repr__(self):
         reps = [member.name for member in self.members]
@@ -215,10 +218,15 @@ class StackEnsemble(Ensemble):
         # Assumption: all members have same train_batches.classes
         if X is None or y is None:
             return self._fit_train()
-        assert(X.ndim <= 3)
-        if X.ndim == 3:
-            X = X.reshape(X.shape[0], X.shape[1] * X.shape[2])
-        return self.model.fit(X, y, **kwargs)
+        if X.ndim >= 3:
+            X = X.reshape(X.shape[0], np.prod(X.shape[1::]))
+        try:
+            self._y_squeezed = False
+            return self.model.fit(X, y, **kwargs)
+        except ValueError:  # Normally bad input shape for non-multi-output models
+            self._y_squeezed = True
+            y_flat = np.argmax(y, axis=1)
+            return self.model.fit(X, y_flat, **kwargs)
 
     def predict(self, X=None, predict_proba=False, kwargs={}):
         """
@@ -236,12 +244,14 @@ class StackEnsemble(Ensemble):
             X = self._get_pred_X()
         if X.ndim == 3:
             X = X.reshape(X.shape[0], X.shape[1] * X.shape[2])
-        if predict_proba and hasattr(self.model, 'predict_proba'):
+        if (predict_proba or self._y_squeezed) and hasattr(self.model, 'predict_proba'):
             self.predictions = self.model.predict_proba(X, **kwargs)
+            print("Calling predict_proba")
         elif hasattr(self.model, 'predict'):
             self.predictions = self.model.predict(X, **kwargs)
+            print("Calling predict")            
         else:
-            raise("Model has no predict function")
+            raise ValueError("Model has no predict function")
         return np.array(self.predictions)
 
     def describe(self, probabilities_val=None, metric=None,
@@ -383,14 +393,17 @@ def _calculate_metric(y_true, y_pred, metric=None):  # TODO: Refactor
     except ValueError:
         pass
 
-    y_true_cat = to_categorical(y_true)
     try:
+        y_true_cat = to_categorical(y_true)
         return metrics.roc_auc_score(y_true_cat, y_pred)
     except ValueError:
         pass
 
     # Classification Task
-    y_t = np.argmax(y_true, axis=1)
-    y_p = np.argmax(y_pred, axis=1)
-
+    y_t = y_true
+    if y_true.ndim > 1:
+        y_t = np.argmax(y_true, axis=1)
+    y_p = y_pred
+    if y_pred.ndim > 1:
+        y_p = np.argmax(y_pred, axis=1)
     return metric(y_t, y_p)
