@@ -6,7 +6,6 @@ from sklearn import metrics
 import warnings
 from abc import abstractmethod
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.base import is_classifier, is_regressor
 import os
 import joblib
 import glob
