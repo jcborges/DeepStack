@@ -1,11 +1,11 @@
 # DeepStack
 
-DeepStack: Ensembling Deep Learning Models into the next Performance Level
+DeepStack: Ensembles for Deep Learning
 
 [![Travis](https://travis-ci.com/jcborges/DeepStack.svg?branch=master)](https://travis-ci.com/jcborges/DeepStack) [![PyPI version](https://badge.fury.io/py/deepstack.svg)](https://badge.fury.io/py/deepstack) [![Download Stats](https://img.shields.io/pypi/dm/deepstack?color=bright%20green&label=installs&logoColor=bright%20green)](https://pypistats.org/packages/deepstack)
 ---
 
-DeepStack is a Python module for building Deep Learning Ensembles built originally on top of Keras and distributed under the MIT license.
+DeepStack is a Python module for building Deep Learning Ensembles originally built on top of Keras and distributed under the MIT license.
 
 
 ## Installation
@@ -53,3 +53,15 @@ Ensemble Technique that weights the prediction of each ensemble member, combinin
 ![](./WeightedEnsemble.png)
 
 It follows the same interface of the StackEnsemble. An example can be found in [Cifar10.py](./examples/Cifar10.py).
+
+## Citing DeepStack
+If you use DeepStack in a scientific publication, we would appreciate citations:
+
+```bibtex
+@misc{
+    title   = {DeepStack: Ensembles for Deep Learning},
+    author  = {Julio Borges},
+    url = {https://github.com/jcborges/DeepStack},
+    date = {2019}
+}
+```
