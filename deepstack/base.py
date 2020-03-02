@@ -143,7 +143,7 @@ class KerasMember(Member):
             batches.shuffle = False
         if type(batches) is tuple:
             self._test_datatuple(batches)
-            return self.model.predict(batches[0])
+            return self.model(batches[0]). #for pytorch implementaion
         return self.model.predict_generator(
             batches, steps=(batches.n // batches.batch_size) + 1, verbose=1)
 
