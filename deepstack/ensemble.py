@@ -10,7 +10,7 @@ import os
 import joblib
 import glob
 from deepstack.base import Member
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 
 
 class Ensemble(object):
